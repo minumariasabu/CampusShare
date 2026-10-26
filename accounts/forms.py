@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.password_validation import validate_password
-
 from .models import Institution, User
+from django.contrib.auth.forms import AuthenticationForm
 
 
 class RegisterForm(forms.ModelForm):
@@ -73,3 +73,20 @@ class RegisterForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+
+class EmailLoginForm(AuthenticationForm):
+    username = forms.CharField(
+        label="College email",
+        widget=forms.TextInput(attrs={'autofocus': True, 'class': 'form-control'}),
+    )
+    password = forms.CharField(
+        label="Password",
+        strip=False,
+        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+    )
+
+    def clean_username(self):
+        value = self.cleaned_data['username'].strip()
+        if '@' in value:
+            value = value.lower()
+        return value
