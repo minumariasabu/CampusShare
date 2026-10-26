@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center py-5">
+    <h1 class="display-5 fw-bold">Share what you have. Find what you need.</h1>
+    <p class="lead text-muted">CampusShare lets students on your campus lend, donate, and exchange items.</p>
+    <a href="#" class="btn btn-primary btn-lg me-2">Get started</a>
+    <a href="#" class="btn btn-outline-primary btn-lg">Browse items</a>
+</div>
+
+<h2 class="h4 text-center mb-4">How it works</h2>
+<div class="row text-center g-4 mb-5">
+    <div class="col-md-4">
+        <h3 class="h5">1. List</h3>
+        <p class="text-muted">Add an item you can lend, donate, or exchange.</p>
+    </div>
+    <div class="col-md-4">
+        <h3 class="h5">2. Request</h3>
+        <p class="text-muted">Find what you need and send a request to the owner.</p>
+    </div>
+    <div class="col-md-4">
+        <h3 class="h5">3. Share</h3>
+        <p class="text-muted">Meet, hand over the item, and rate each other.</p>
+    </div>
+</div>
+
+<h2 class="h4 text-center mb-4">Categories</h2>
+<div class="d-flex flex-wrap justify-content-center gap-2 mb-5">
+    {% for category in categories %}
+        <span class="badge bg-secondary fs-6">{{ category.name }}</span>
+    {% empty %}
+        <p class="text-muted">No categories yet.</p>
+    {% endfor %}
+</div>
+{% endblock %}
