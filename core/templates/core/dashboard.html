@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - CampusShare{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">Welcome, {{ user.first_name|default:user.username }}</h1>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-6">{{ active_listings }}</div>
+                <div class="text-muted">Active listings</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-6">{{ pending_requests }}</div>
+                <div class="text-muted">Pending requests</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-6">{{ items_borrowed }}</div>
+                <div class="text-muted">Items borrowed</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-6">{{ due_soon }}</div>
+                <div class="text-muted">Due soon</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mb-4">
+    <a href="#" class="btn btn-primary me-2">Add Resource</a>
+    <a href="#" class="btn btn-outline-primary">Browse</a>
+</div>
+
+<h2 class="h5">Recent notifications</h2>
+<ul class="list-group">
+    {% for n in notifications %}
+        <li class="list-group-item {% if not n.is_read %}fw-bold{% endif %}">
+            {{ n.message }}
+            <small class="text-muted float-end">{{ n.created_at|timesince }} ago</small>
+        </li>
+    {% empty %}
+        <li class="list-group-item text-muted">No notifications yet.</li>
+    {% endfor %}
+</ul>
+{% endblock %}
