@@ -1,0 +1,75 @@
+from django import forms
+from django.contrib.auth.password_validation import validate_password
+
+from .models import Institution, User
+
+
+class RegisterForm(forms.ModelForm):
+    YEAR_CHOICES = [
+        ('', 'Select year'),
+        ('1st year', '1st year'),
+        ('2nd year', '2nd year'),
+        ('3rd year', '3rd year'),
+        ('4th year', '4th year'),
+        ('Other', 'Other'),
+    ]
+
+    year = forms.ChoiceField(choices=YEAR_CHOICES)
+    password1 = forms.CharField(label="Password", widget=forms.PasswordInput)
+    password2 = forms.CharField(label="Confirm password", widget=forms.PasswordInput)
+
+    class Meta:
+        model = User
+        fields = ['first_name', 'email', 'department', 'year']
+        labels = {
+            'first_name': 'Full name',
+            'email': 'College email',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['first_name'].required = True
+        self.fields['department'].required = True
+        for field in self.fields.values():
+            if isinstance(field.widget, forms.Select):
+                field.widget.attrs['class'] = 'form-select'
+            else:
+                field.widget.attrs['class'] = 'form-control'
+
+    def clean_email(self):
+        email = self.cleaned_data['email'].lower()
+        institution = Institution.objects.first()
+        if institution is None:
+            raise forms.ValidationError("No institution is set up yet. Please contact the admin.")
+        domain = email.split('@')[-1]
+        if domain != institution.email_domain.lower():
+            raise forms.ValidationError(
+                f"Please use your college email (ending in @{institution.email_domain})."
+            )
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("An account with this email already exists.")
+        return email
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get('password1')
+        p2 = cleaned.get('password2')
+        if p1 and p2:
+            if p1 != p2:
+                self.add_error('password2', "The two passwords don't match.")
+            else:
+                try:
+                    validate_password(p1)
+                except forms.ValidationError as e:
+                    self.add_error('password1', e)
+        return cleaned
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.username = user.email          # we use the email as the login name
+        user.set_password(self.cleaned_data['password1'])
+        user.institution = Institution.objects.first()
+        user.is_verified = False
+        if commit:
+            user.save()
+        return user
