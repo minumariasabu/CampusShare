@@ -6,7 +6,8 @@ from django.shortcuts import get_object_or_404, render, redirect
 from .forms import ResourceForm, ResourceEditForm
 from .models import Category, Resource, ResourceImage
 from django.http import Http404
-from borrowing.models import Review
+from borrowing.forms import RequestForm, ACTIVE_STATUSES
+from borrowing.models import Notification, Request as BorrowRequest, Review
 
 MAX_IMAGES = 5
 
@@ -176,6 +177,43 @@ def resource_detail(request, pk):
     if resource.is_hidden and not is_owner and not request.user.is_staff:
         raise Http404
 
+    # Has this user already got a request in progress for this item?
+    existing_request = None
+    if not is_owner:
+        existing_request = BorrowRequest.objects.filter(
+            resource=resource, borrower=request.user, status__in=ACTIVE_STATUSES
+        ).first()
+
+    can_request = (
+        not is_owner
+        and resource.status == 'available'
+        and not resource.is_hidden
+        and existing_request is None
+    )
+
+    form = None
+    show_modal = False
+
+    if request.method == 'POST':
+        if not can_request:
+            messages.error(request, "This item can't be requested right now.")
+            return redirect('resource_detail', pk=resource.pk)
+
+        form = RequestForm(request.POST, resource=resource, borrower=request.user)
+        if form.is_valid():
+            new_request = form.save()
+            who = request.user.first_name or "A student"
+            Notification.objects.create(
+                user=resource.owner,
+                request=new_request,
+                message=f'{who} requested "{resource.title}".',
+            )
+            messages.success(request, "Request sent! The owner has been notified.")
+            return redirect('resource_detail', pk=resource.pk)
+        show_modal = True          # errors: reopen the popup
+    elif can_request:
+        form = RequestForm(resource=resource, borrower=request.user)
+
     owner_reviews = Review.objects.filter(reviewee=resource.owner)
     stats = owner_reviews.aggregate(avg=Avg('rating'), count=Count('id'))
     recent_reviews = owner_reviews.select_related('reviewer').order_by('-created_at')[:5]
@@ -183,7 +221,10 @@ def resource_detail(request, pk):
     return render(request, 'resources/resource_detail.html', {
         'resource': resource,
         'is_owner': is_owner,
-        'can_request': (not is_owner) and resource.status == 'available' and not resource.is_hidden,
+        'can_request': can_request,
+        'existing_request': existing_request,
+        'form': form,
+        'show_modal': show_modal,
         'owner_rating': stats['avg'],
         'owner_review_count': stats['count'],
         'reviews': recent_reviews,
