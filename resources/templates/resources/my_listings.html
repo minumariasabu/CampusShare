@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}My Listings - CampusShare{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">My listings</h1>
+    <a href="{% url 'add_resource' %}" class="btn btn-primary">Add Resource</a>
+</div>
+
+{% if resources %}
+<div class="table-responsive">
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Photo</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Requests</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in resources %}
+            <tr>
+                <td style="width: 80px;">
+                    {% with img=r.images.all.0 %}
+                        {% if img %}
+                            <img src="{{ img.image.url }}" alt="{{ r.title }}" class="rounded"
+                                 style="width: 64px; height: 64px; object-fit: cover;">
+                        {% else %}
+                            <div class="bg-light rounded text-muted small d-flex align-items-center justify-content-center"
+                                 style="width: 64px; height: 64px;">No photo</div>
+                        {% endif %}
+                    {% endwith %}
+                </td>
+                <td>
+                    {{ r.title }}
+                    <div class="text-muted small">
+                        {{ r.get_listing_type_display }} &middot; {{ r.category.name|default:"No category" }}
+                    </div>
+                </td>
+                <td>
+                    {% if r.status == 'available' %}
+                        <span class="badge bg-success">Available</span>
+                    {% elif r.status == 'lent_out' %}
+                        <span class="badge bg-warning text-dark">Lent out</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Unavailable</span>
+                    {% endif %}
+                    {% if r.is_hidden %}
+                        <span class="badge bg-danger">Hidden by admin</span>
+                    {% endif %}
+                </td>
+                <td>{{ r.request_count }}</td>
+                <td class="text-end">
+                    <a href="{% url 'edit_resource' r.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                    <a href="{% url 'delete_resource' r.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+    <p>You haven't listed anything yet.</p>
+    <a href="{% url 'add_resource' %}" class="btn btn-primary">List your first item</a>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Resource - CampusShare{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5 text-center">
+        <h1 class="h3 mb-3">Delete this listing?</h1>
+        <p class="lead">{{ resource.title }}</p>
+
+        {% if has_requests %}
+            <div class="alert alert-warning">
+                This item has requests, so it can't be deleted. Edit it and turn off
+                "Available for requests" instead.
+            </div>
+            <a href="{% url 'edit_resource' resource.pk %}" class="btn btn-primary">Edit listing</a>
+            <a href="{% url 'my_listings' %}" class="btn btn-outline-secondary ms-2">Back</a>
+        {% else %}
+            <p class="text-muted">This will permanently remove the listing and its photos.</p>
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Yes, delete</button>
+                <a href="{% url 'my_listings' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+            </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
