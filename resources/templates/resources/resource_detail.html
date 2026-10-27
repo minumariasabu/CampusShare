@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}{{ resource.title }} - CampusShare{% endblock %}
+
+{% block content %}
+<a href="{% url 'browse' %}" class="text-decoration-none">&larr; Back to browse</a>
+
+{% if resource.is_hidden %}
+    <div class="alert alert-danger mt-3">This listing is hidden by an admin and is not visible to other students.</div>
+{% endif %}
+
+<div class="row g-4 mt-1">
+
+    <!-- Photos -->
+    <div class="col-lg-6">
+        {% if resource.images.all %}
+        <div id="photoCarousel" class="carousel slide">
+            <div class="carousel-inner rounded">
+                {% for img in resource.images.all %}
+                <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                    <img src="{{ img.image.url }}" class="d-block w-100" alt="{{ resource.title }}"
+                         style="height: 380px; object-fit: cover;">
+                </div>
+                {% endfor %}
+            </div>
+            {% if resource.images.all|length > 1 %}
+            <button class="carousel-control-prev" type="button" data-bs-target="#photoCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#photoCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="bg-light rounded text-muted d-flex align-items-center justify-content-center"
+             style="height: 380px;">No photos</div>
+        {% endif %}
+    </div>
+
+    <!-- Details -->
+    <div class="col-lg-6">
+        <h1 class="h3">{{ resource.title }}</h1>
+
+        <div class="mb-3">
+            {% if resource.status == 'available' %}
+                <span class="badge bg-success">Available</span>
+            {% elif resource.status == 'lent_out' %}
+                <span class="badge bg-warning text-dark">Lent out</span>
+            {% else %}
+                <span class="badge bg-secondary">Unavailable</span>
+            {% endif %}
+            <span class="badge bg-primary">{{ resource.get_listing_type_display }}</span>
+        </div>
+
+        <dl class="row mb-3">
+            <dt class="col-sm-5">Category</dt>
+            <dd class="col-sm-7">{{ resource.category.name|default:"Not set" }}</dd>
+
+            <dt class="col-sm-5">Condition</dt>
+            <dd class="col-sm-7">{{ resource.get_condition_display }}</dd>
+
+            {% if resource.listing_type != 'donate' %}
+            <dt class="col-sm-5">Maximum borrow time</dt>
+            <dd class="col-sm-7">{{ resource.max_borrow_days }} day{{ resource.max_borrow_days|pluralize }}</dd>
+            {% endif %}
+
+            <dt class="col-sm-5">Pickup location</dt>
+            <dd class="col-sm-7">{{ resource.pickup_location }}</dd>
+
+            <dt class="col-sm-5">Listed on</dt>
+            <dd class="col-sm-7">{{ resource.created_at|date:"j M Y" }}</dd>
+        </dl>
+
+        <h2 class="h6">Description</h2>
+        <p>{{ resource.description|linebreaksbr }}</p>
+
+        <!-- Owner -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="text-muted small">Listed by</div>
+                <div class="fw-bold">{{ resource.owner.first_name|default:resource.owner.username }}</div>
+                {% if resource.owner.department %}
+                    <div class="small text-muted">{{ resource.owner.department }}</div>
+                {% endif %}
+                <div class="mt-1">
+                    {% if owner_review_count %}
+                        &#9733; {{ owner_rating|floatformat:1 }}
+                        <span class="text-muted small">({{ owner_review_count }} review{{ owner_review_count|pluralize }})</span>
+                    {% else %}
+                        <span class="text-muted small">No ratings yet</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        {% if is_owner %}
+            <div class="alert alert-info">This is your listing.</div>
+            <a href="{% url 'edit_resource' resource.pk %}" class="btn btn-primary">Edit listing</a>
+            <a href="{% url 'my_listings' %}" class="btn btn-outline-secondary ms-2">My listings</a>
+        {% else %}
+            {% if can_request %}
+                <a href="#" class="btn btn-primary btn-lg">Request this item</a>
+            {% else %}
+                <button class="btn btn-secondary btn-lg" disabled>Not available right now</button>
+            {% endif %}
+            <a href="#" class="btn btn-outline-danger ms-2">Report listing</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Reviews of the owner -->
+<hr class="my-4">
+<h2 class="h5 mb-3">Reviews of {{ resource.owner.first_name|default:"this user" }}</h2>
+{% for rv in reviews %}
+    <div class="border rounded p-3 mb-2">
+        <div>
+            <strong>&#9733; {{ rv.rating }}/5</strong>
+            <span class="text-muted small">
+                &middot; {{ rv.reviewer.first_name|default:"A student" }} &middot; {{ rv.created_at|date:"j M Y" }}
+            </span>
+        </div>
+        {% if rv.comment %}<div>{{ rv.comment }}</div>{% endif %}
+    </div>
+{% empty %}
+    <p class="text-muted">No reviews yet.</p>
+{% endfor %}
+{% endblock %}

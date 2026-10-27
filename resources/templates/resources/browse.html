@@ -65,7 +65,9 @@
             {% endwith %}
 
             <div class="card-body">
-                <h2 class="h5 card-title">{{ r.title }}</h2>
+                <h2 class="h5 card-title">
+                    <a href="{% url 'resource_detail' r.pk %}" class="text-decoration-none text-dark stretched-link">{{ r.title }}</a>
+                </h2>
                 <p class="text-muted small mb-2">
                     {{ r.category.name|default:"No category" }} &middot; {{ r.get_listing_type_display }}
                     &middot; {{ r.get_condition_display }}

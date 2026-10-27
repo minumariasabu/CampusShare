@@ -5,6 +5,8 @@ from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404, render, redirect
 from .forms import ResourceForm, ResourceEditForm
 from .models import Category, Resource, ResourceImage
+from django.http import Http404
+from borrowing.models import Review
 
 MAX_IMAGES = 5
 
@@ -160,4 +162,29 @@ def browse(request):
             'availability': availability,
         },
         'querystring': params.urlencode(),
+    })
+
+@login_required
+def resource_detail(request, pk):
+    resource = get_object_or_404(
+        Resource.objects.select_related('owner', 'category').prefetch_related('images'),
+        pk=pk,
+    )
+    is_owner = resource.owner_id == request.user.id
+
+    # Items hidden by an admin are visible only to their owner and to admins
+    if resource.is_hidden and not is_owner and not request.user.is_staff:
+        raise Http404
+
+    owner_reviews = Review.objects.filter(reviewee=resource.owner)
+    stats = owner_reviews.aggregate(avg=Avg('rating'), count=Count('id'))
+    recent_reviews = owner_reviews.select_related('reviewer').order_by('-created_at')[:5]
+
+    return render(request, 'resources/resource_detail.html', {
+        'resource': resource,
+        'is_owner': is_owner,
+        'can_request': (not is_owner) and resource.status == 'available' and not resource.is_hidden,
+        'owner_rating': stats['avg'],
+        'owner_review_count': stats['count'],
+        'reviews': recent_reviews,
     })

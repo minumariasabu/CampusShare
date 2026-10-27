@@ -35,7 +35,7 @@
                     {% endwith %}
                 </td>
                 <td>
-                    {{ r.title }}
+                    <a href="{% url 'resource_detail' r.pk %}" class="text-decoration-none">{{ r.title }}</a>
                     <div class="text-muted small">
                         {{ r.get_listing_type_display }} &middot; {{ r.category.name|default:"No category" }}
                     </div>
