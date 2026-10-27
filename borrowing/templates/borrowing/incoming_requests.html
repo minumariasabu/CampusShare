@@ -31,6 +31,7 @@
                 <div class="text-muted small">
                     Requested {{ r.created_at|timesince }} ago &middot; {{ r.get_request_type_display }}
                 </div>
+                <a href="{% url 'request_detail' r.pk %}" class="small">View details</a>
             </div>
             <div>
                 {% if r.status == 'pending' %}

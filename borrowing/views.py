@@ -4,6 +4,8 @@ from django.db import transaction
 from django.db.models import Avg, Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
+from django.http import Http404
+from django.utils import timezone
 
 from .models import Notification, Request
 
@@ -161,3 +163,111 @@ def reject_request(request, pk):
             notify(req.borrower, req, text)
             messages.success(request, "Request rejected. The borrower has been notified.")
     return redirect('incoming_requests')
+
+def build_timeline(req):
+    """Turn a request's status into a list of steps: done, current or todo."""
+    if req.status in ('rejected', 'cancelled'):
+        return [
+            {'label': 'Requested', 'state': 'done', 'when': req.created_at},
+            {'label': req.get_status_display(), 'state': 'failed', 'when': None},
+        ]
+
+    if req.request_type == 'donate':
+        steps = [
+            ('Requested', req.created_at),
+            ('Approved', None),
+            ('Received', req.completed_at),
+        ]
+        position = {'pending': 0, 'approved': 1, 'completed': 2}
+    else:
+        steps = [
+            ('Requested', req.created_at),
+            ('Approved', None),
+            ('Handed over', req.handed_over_at),
+            ('Return initiated', None),
+            ('Completed', req.completed_at),
+        ]
+        position = {
+            'pending': 0, 'approved': 1, 'handed_over': 2, 'overdue': 2,
+            'return_initiated': 3, 'completed': 4,
+        }
+
+    pos = position.get(req.status, 0)
+    timeline = []
+    for i, (label, when) in enumerate(steps):
+        if req.status == 'completed' or i < pos:
+            state = 'done'
+        elif i == pos:
+            state = 'current'
+        else:
+            state = 'todo'
+        timeline.append({'label': label, 'state': state, 'when': when})
+    return timeline
+
+
+@login_required
+def request_detail(request, pk):
+    req = get_object_or_404(
+        Request.objects.select_related('resource', 'resource__owner', 'borrower')
+        .prefetch_related('resource__images'),
+        pk=pk,
+    )
+    is_borrower = req.borrower_id == request.user.id
+    is_owner = req.resource.owner_id == request.user.id
+
+    # Only the two people involved may open this page
+    if not (is_borrower or is_owner):
+        raise Http404
+
+    other = req.resource.owner if is_borrower else req.borrower
+    show_contact = req.status in ('approved', 'handed_over', 'return_initiated', 'overdue')
+
+    return render(request, 'borrowing/request_detail.html', {
+        'req': req,
+        'is_borrower': is_borrower,
+        'is_owner': is_owner,
+        'other': other,
+        'show_contact': show_contact,
+        'timeline': build_timeline(req),
+    })
+
+
+@login_required
+@require_POST
+def mark_received(request, pk):
+    with transaction.atomic():
+        req = get_object_or_404(
+            Request.objects.select_for_update().select_related('resource'),
+            pk=pk, borrower=request.user,
+        )
+        resource = req.resource
+
+        if req.status != 'approved':
+            messages.error(request, "This request isn't waiting for pickup.")
+        elif resource.status != 'available':
+            messages.error(
+                request,
+                "The owner has marked this item unavailable. Please contact the owner.",
+            )
+        else:
+            now = timezone.now()
+            req.handed_over_at = now
+            who = request.user.first_name or "The borrower"
+
+            if req.request_type == 'donate':
+                # Nothing comes back, so the request is finished at handover
+                req.status = 'completed'
+                req.completed_at = now
+                resource.status = 'unavailable'
+                text = f'{who} received "{resource.title}". The donation is complete.'
+            else:
+                req.status = 'handed_over'
+                resource.status = 'lent_out'
+                text = f'{who} marked "{resource.title}" as received.'
+
+            req.save(update_fields=['status', 'handed_over_at', 'completed_at'])
+            resource.save(update_fields=['status'])
+            notify(resource.owner, req, text)
+            messages.success(request, "Marked as received. Enjoy the item!")
+
+    return redirect('request_detail', pk=req.pk)

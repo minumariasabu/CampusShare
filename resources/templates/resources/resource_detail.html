@@ -105,6 +105,7 @@
             {% if existing_request %}
                 <div class="alert alert-info mb-2">
                     You already requested this item. Status: <strong>{{ existing_request.get_status_display }}</strong>
+                    <a href="{% url 'request_detail' existing_request.pk %}" class="alert-link ms-2">View request</a>
                 </div>
             {% elif can_request %}
                 <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#requestModal">

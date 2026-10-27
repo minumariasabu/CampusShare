@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Request #{{ req.pk }} - CampusShare{% endblock %}
+
+{% block content %}
+<a href="{% if is_owner %}{% url 'incoming_requests' %}{% else %}{% url 'my_requests' %}{% endif %}"
+   class="text-decoration-none">&larr; Back to {% if is_owner %}incoming requests{% else %}my requests{% endif %}</a>
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 mb-3">
+    <h1 class="h3 mb-0">Request #{{ req.pk }}</h1>
+    <div>
+        <span class="badge bg-primary fs-6">{{ req.get_status_display }}</span>
+        {% if req.status == 'overdue' %}<span class="badge bg-danger fs-6">Past due date</span>{% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+
+    <!-- Left: details -->
+    <div class="col-lg-7">
+
+        <div class="card mb-3">
+            <div class="card-body d-flex gap-3">
+                {% with img=req.resource.images.all.0 %}
+                    {% if img %}
+                        <img src="{{ img.image.url }}" alt="{{ req.resource.title }}" class="rounded"
+                             style="width: 96px; height: 96px; object-fit: cover;">
+                    {% else %}
+                        <div class="bg-light rounded text-muted small d-flex align-items-center justify-content-center"
+                             style="width: 96px; height: 96px;">No photo</div>
+                    {% endif %}
+                {% endwith %}
+                <div>
+                    <h2 class="h5 mb-1">
+                        <a href="{% url 'resource_detail' req.resource.pk %}" class="text-decoration-none">{{ req.resource.title }}</a>
+                    </h2>
+                    <div class="text-muted small">
+                        {{ req.get_request_type_display }} &middot; {{ req.resource.get_condition_display }}
+                    </div>
+                    {% if show_contact %}
+                        <div class="small mt-1">Pickup: {{ req.resource.pickup_location }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <div class="text-muted small">{% if is_borrower %}Owner{% else %}Requester{% endif %}</div>
+                        <div class="fw-bold">{{ other.first_name|default:other.username }}</div>
+                        {% if other.department %}
+                            <div class="small text-muted">{{ other.department }}{% if other.year %}, {{ other.year }}{% endif %}</div>
+                        {% endif %}
+                        {% if show_contact and other.phone %}
+                            <div class="small">Phone: {{ other.phone }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="text-muted small">Dates</div>
+                        <div>From {{ req.needed_from|date:"j M Y" }}</div>
+                        {% if req.return_by %}<div>Return by {{ req.return_by|date:"j M Y" }}</div>{% endif %}
+                        <div class="small text-muted">Requested {{ req.created_at|date:"j M Y" }}</div>
+                    </div>
+                </div>
+
+                {% if req.message %}
+                    <hr>
+                    <div class="text-muted small">Message</div>
+                    <div>{{ req.message|linebreaksbr }}</div>
+                {% endif %}
+                {% if req.exchange_offer %}
+                    <hr>
+                    <div class="text-muted small">Offered in exchange</div>
+                    <div>{{ req.exchange_offer|linebreaksbr }}</div>
+                {% endif %}
+                {% if req.status == 'rejected' and req.reject_reason %}
+                    <hr>
+                    <div class="text-muted small">Reason for rejection</div>
+                    <div>{{ req.reject_reason|linebreaksbr }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: timeline and actions -->
+    <div class="col-lg-5">
+        <h2 class="h6">Progress</h2>
+        <ul class="list-group mb-4">
+            {% for s in timeline %}
+            <li class="list-group-item d-flex justify-content-between align-items-center {% if s.state == 'todo' %}text-muted{% endif %}">
+                <span>
+                    {% if s.state == 'done' %}<span class="text-success">&#10003;</span>
+                    {% elif s.state == 'current' %}<span class="text-primary">&#9679;</span>
+                    {% elif s.state == 'failed' %}<span class="text-danger">&#10007;</span>
+                    {% else %}<span>&#9675;</span>{% endif %}
+                    <span class="{% if s.state == 'current' %}fw-bold{% endif %}">{{ s.label }}</span>
+                </span>
+                <span class="small text-muted">{% if s.when %}{{ s.when|date:"j M, g:i A" }}{% endif %}</span>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <h2 class="h6">What you can do</h2>
+
+        {% if is_borrower %}
+            {% if req.status == 'pending' %}
+                <p class="text-muted small">Waiting for the owner to respond.</p>
+                <form method="post" action="{% url 'cancel_request' req.pk %}"
+                      onsubmit="return confirm('Cancel this request?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger">Cancel request</button>
+                </form>
+            {% elif req.status == 'approved' %}
+                <p class="text-muted small">
+                    Approved! Collect the item from the pickup location, then confirm here.
+                </p>
+                <form method="post" action="{% url 'mark_received' req.pk %}"
+                      onsubmit="return confirm('Confirm that you have received this item?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success">Mark as received</button>
+                </form>
+            {% elif req.status == 'handed_over' or req.status == 'overdue' %}
+                <p class="text-muted small">You have the item. Please return it by the due date.</p>
+            {% elif req.status == 'return_initiated' %}
+                <p class="text-muted small">Waiting for the owner to confirm the return.</p>
+            {% elif req.status == 'completed' %}
+                <p class="text-muted small">This request is complete.</p>
+            {% else %}
+                <p class="text-muted small">Nothing more to do on this request.</p>
+            {% endif %}
+        {% else %}
+            {% if req.status == 'pending' %}
+                <p class="text-muted small">This request is waiting for your decision.</p>
+                <a href="{% url 'incoming_requests' %}" class="btn btn-primary">Respond on Incoming Requests</a>
+            {% elif req.status == 'approved' %}
+                <p class="text-muted small">Approved. Waiting for the borrower to collect the item.</p>
+            {% elif req.status == 'handed_over' or req.status == 'overdue' %}
+                <p class="text-muted small">The borrower has the item.</p>
+            {% elif req.status == 'return_initiated' %}
+                <p class="text-muted small">The borrower says the item has been returned.</p>
+            {% elif req.status == 'completed' %}
+                <p class="text-muted small">This request is complete.</p>
+            {% else %}
+                <p class="text-muted small">Nothing more to do on this request.</p>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
