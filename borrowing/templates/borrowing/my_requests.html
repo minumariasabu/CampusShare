@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}My Requests - CampusShare{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">My requests</h1>
+
+<ul class="nav nav-tabs mb-3">
+    {% for t in tabs %}
+    <li class="nav-item">
+        <a class="nav-link {% if t.key == current_tab %}active{% endif %}"
+           href="{% url 'my_requests' %}?tab={{ t.key }}">
+            {{ t.label }} <span class="badge bg-light text-dark border">{{ t.count }}</span>
+        </a>
+    </li>
+    {% endfor %}
+</ul>
+
+{% if my_reqs %}
+<div class="table-responsive">
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Owner</th>
+                <th>Type</th>
+                <th>Dates</th>
+                <th>Status</th>
+                <th class="text-end">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in my_reqs %}
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        {% with img=r.resource.images.all.0 %}
+                            {% if img %}
+                                <img src="{{ img.image.url }}" alt="{{ r.resource.title }}" class="rounded"
+                                     style="width: 48px; height: 48px; object-fit: cover;">
+                            {% else %}
+                                <div class="bg-light rounded text-muted small d-flex align-items-center justify-content-center"
+                                     style="width: 48px; height: 48px;">&mdash;</div>
+                            {% endif %}
+                        {% endwith %}
+                        <a href="{% url 'resource_detail' r.resource.pk %}" class="text-decoration-none">
+                            {{ r.resource.title }}
+                        </a>
+                    </div>
+                </td>
+                <td>{{ r.resource.owner.first_name|default:r.resource.owner.username }}</td>
+                <td>{{ r.get_request_type_display }}</td>
+                <td class="small">
+                    From {{ r.needed_from|date:"j M Y" }}
+                    {% if r.return_by %}<br>Return by {{ r.return_by|date:"j M Y" }}{% endif %}
+                </td>
+                <td>
+                    {% if r.status == 'pending' %}
+                        <span class="badge bg-warning text-dark">Pending</span>
+                    {% elif r.status == 'approved' %}
+                        <span class="badge bg-primary">Approved</span>
+                    {% elif r.status == 'handed_over' %}
+                        <span class="badge bg-info text-dark">Handed over</span>
+                    {% elif r.status == 'return_initiated' %}
+                        <span class="badge bg-info text-dark">Return initiated</span>
+                    {% elif r.status == 'completed' %}
+                        <span class="badge bg-success">Completed</span>
+                    {% elif r.status == 'overdue' %}
+                        <span class="badge bg-danger">Overdue</span>
+                    {% elif r.status == 'rejected' %}
+                        <span class="badge bg-secondary">Rejected</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Cancelled</span>
+                    {% endif %}
+                    {% if r.status == 'rejected' and r.reject_reason %}
+                        <div class="small text-muted mt-1">Reason: {{ r.reject_reason }}</div>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    {% if r.status == 'pending' %}
+                    <form method="post" action="{% url 'cancel_request' r.pk %}"
+                          onsubmit="return confirm('Cancel this request?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+    <p>No requests here yet.</p>
+    <a href="{% url 'browse' %}" class="btn btn-primary">Browse items</a>
+</div>
+{% endif %}
+{% endblock %}

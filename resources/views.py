@@ -209,7 +209,7 @@ def resource_detail(request, pk):
                 message=f'{who} requested "{resource.title}".',
             )
             messages.success(request, "Request sent! The owner has been notified.")
-            return redirect('resource_detail', pk=resource.pk)
+            return redirect('my_requests')
         show_modal = True          # errors: reopen the popup
     elif can_request:
         form = RequestForm(resource=resource, borrower=request.user)

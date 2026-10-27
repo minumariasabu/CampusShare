@@ -17,6 +17,7 @@
                 <a class="text-white me-3 text-decoration-none" href="{% url 'add_resource' %}">Add Resource</a>
                 <a class="text-white me-3 text-decoration-none" href="{% url 'my_listings' %}">My Listings</a>
                 <a class="text-white me-3 text-decoration-none" href="{% url 'browse' %}">Browse</a>
+                <a class="text-white me-3 text-decoration-none" href="{% url 'my_requests' %}">My Requests</a>
                 <span class="text-white me-3">Hi, {{ user.first_name|default:user.username }}</span>
                 <form method="post" action="{% url 'logout' %}" class="m-0">
                     {% csrf_token %}
