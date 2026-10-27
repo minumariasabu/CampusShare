@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Incoming Requests - CampusShare{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Incoming requests</h1>
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link {% if current_tab == 'pending' %}active{% endif %}"
+           href="{% url 'incoming_requests' %}?tab=pending">
+            Pending <span class="badge bg-warning text-dark">{{ pending_count }}</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if current_tab == 'all' %}active{% endif %}"
+           href="{% url 'incoming_requests' %}?tab=all">
+            All <span class="badge bg-light text-dark border">{{ all_count }}</span>
+        </a>
+    </li>
+</ul>
+
+{% for r in incoming %}
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between flex-wrap gap-2">
+            <div>
+                <h2 class="h5 mb-1">
+                    <a href="{% url 'resource_detail' r.resource.pk %}" class="text-decoration-none">{{ r.resource.title }}</a>
+                </h2>
+                <div class="text-muted small">
+                    Requested {{ r.created_at|timesince }} ago &middot; {{ r.get_request_type_display }}
+                </div>
+            </div>
+            <div>
+                {% if r.status == 'pending' %}
+                    <span class="badge bg-warning text-dark">Pending</span>
+                {% elif r.status == 'approved' %}
+                    <span class="badge bg-primary">Approved</span>
+                {% elif r.status == 'handed_over' %}
+                    <span class="badge bg-info text-dark">Handed over</span>
+                {% elif r.status == 'return_initiated' %}
+                    <span class="badge bg-info text-dark">Return initiated</span>
+                {% elif r.status == 'completed' %}
+                    <span class="badge bg-success">Completed</span>
+                {% elif r.status == 'overdue' %}
+                    <span class="badge bg-danger">Overdue</span>
+                {% else %}
+                    <span class="badge bg-secondary">{{ r.get_status_display }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <hr>
+
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="text-muted small">Requester</div>
+                <div class="fw-bold">{{ r.borrower.first_name|default:r.borrower.username }}</div>
+                {% if r.borrower.department %}
+                    <div class="small text-muted">{{ r.borrower.department }}{% if r.borrower.year %}, {{ r.borrower.year }}{% endif %}</div>
+                {% endif %}
+                <div class="small">
+                    {% if r.borrower_review_count %}
+                        &#9733; {{ r.borrower_rating|floatformat:1 }}
+                        <span class="text-muted">({{ r.borrower_review_count }})</span>
+                    {% else %}
+                        <span class="text-muted">No ratings yet</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="text-muted small">Dates</div>
+                <div>From {{ r.needed_from|date:"j M Y" }}</div>
+                {% if r.return_by %}<div>Return by {{ r.return_by|date:"j M Y" }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-4">
+                {% if r.message %}
+                    <div class="text-muted small">Message</div>
+                    <div>{{ r.message|linebreaksbr }}</div>
+                {% endif %}
+                {% if r.exchange_offer %}
+                    <div class="text-muted small mt-2">Offering in exchange</div>
+                    <div>{{ r.exchange_offer|linebreaksbr }}</div>
+                {% endif %}
+                {% if not r.message and not r.exchange_offer %}
+                    <span class="text-muted small">No message</span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if r.status == 'rejected' and r.reject_reason %}
+            <div class="small text-muted mt-3">Your reason: {{ r.reject_reason }}</div>
+        {% endif %}
+
+        {% if r.status == 'pending' %}
+        <div class="mt-3 d-flex gap-2">
+            <form method="post" action="{% url 'accept_request' r.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success">Accept</button>
+            </form>
+            <button type="button" class="btn btn-outline-danger"
+                    data-bs-toggle="modal" data-bs-target="#rejectModal"
+                    data-reject-url="{% url 'reject_request' r.pk %}"
+                    data-item="{{ r.resource.title }}">
+                Reject
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% empty %}
+<div class="text-center text-muted py-5">
+    {% if current_tab == 'pending' %}
+        <p>No pending requests right now.</p>
+    {% else %}
+        <p>Nobody has requested your items yet.</p>
+    {% endif %}
+    <a href="{% url 'my_listings' %}" class="btn btn-outline-primary">My listings</a>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" id="rejectForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rejectModalLabel">Reject request</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Reject the request for <strong id="rejectItem"></strong>?</p>
+                    <label for="rejectReason" class="form-label">Reason (optional)</label>
+                    <textarea name="reason" id="rejectReason" rows="3" maxlength="300" class="form-control"
+                              placeholder="For example: I already promised it to someone else."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('[data-reject-url]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.getElementById('rejectForm').action = btn.dataset.rejectUrl;
+            document.getElementById('rejectItem').textContent = btn.dataset.item;
+            document.getElementById('rejectReason').value = '';
+        });
+    });
+</script>
+{% endblock %}
