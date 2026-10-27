@@ -80,6 +80,11 @@
                     <div class="text-muted small">Reason for rejection</div>
                     <div>{{ req.reject_reason|linebreaksbr }}</div>
                 {% endif %}
+                {% if req.return_notes %}
+                    <hr>
+                    <div class="text-muted small">Borrower's return note</div>
+                    <div>{{ req.return_notes|linebreaksbr }}</div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -123,6 +128,9 @@
                 </form>
             {% elif req.status == 'handed_over' or req.status == 'overdue' %}
                 <p class="text-muted small">You have the item. Please return it by the due date.</p>
+                {% if req.request_type != 'donate' %}
+                    <a href="{% url 'return_item' req.pk %}" class="btn btn-primary">Return item</a>
+                {% endif %}
             {% elif req.status == 'return_initiated' %}
                 <p class="text-muted small">Waiting for the owner to confirm the return.</p>
             {% elif req.status == 'completed' %}

@@ -9,4 +9,5 @@ urlpatterns = [
     path('<int:pk>/accept/', views.accept_request, name='accept_request'),
     path('<int:pk>/reject/', views.reject_request, name='reject_request'),
     path('<int:pk>/received/', views.mark_received, name='mark_received'),
+    path('<int:pk>/return/', views.return_item, name='return_item'),
 ]

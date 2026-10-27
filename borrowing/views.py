@@ -271,3 +271,44 @@ def mark_received(request, pk):
             messages.success(request, "Marked as received. Enjoy the item!")
 
     return redirect('request_detail', pk=req.pk)
+
+RETURNABLE_STATUSES = ('handed_over', 'overdue')
+
+
+@login_required
+def return_item(request, pk):
+    req = get_object_or_404(
+        Request.objects.select_related('resource', 'resource__owner')
+        .prefetch_related('resource__images'),
+        pk=pk, borrower=request.user,
+    )
+
+    # Donations are finished at handover, so there is nothing to return
+    if req.request_type == 'donate' or req.status not in RETURNABLE_STATUSES:
+        messages.error(request, "This item can't be returned right now.")
+        return redirect('request_detail', pk=req.pk)
+
+    if request.method == 'POST':
+        with transaction.atomic():
+            req = get_object_or_404(
+                Request.objects.select_for_update().select_related('resource'),
+                pk=pk, borrower=request.user,
+            )
+            if req.status not in RETURNABLE_STATUSES:
+                messages.error(request, "This item can't be returned right now.")
+                return redirect('request_detail', pk=req.pk)
+
+            note = request.POST.get('note', '').strip()[:500]
+            req.status = 'return_initiated'
+            req.return_notes = note
+            req.save(update_fields=['status', 'return_notes'])
+
+            who = request.user.first_name or "The borrower"
+            notify(
+                req.resource.owner, req,
+                f'{who} says "{req.resource.title}" has been returned. Please confirm.',
+            )
+        messages.success(request, "Return started. The owner has been asked to confirm.")
+        return redirect('request_detail', pk=req.pk)
+
+    return render(request, 'borrowing/return_item.html', {'req': req})

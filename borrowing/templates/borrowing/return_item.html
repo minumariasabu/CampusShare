@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Return item - CampusShare{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <a href="{% url 'request_detail' req.pk %}" class="text-decoration-none">&larr; Back to request</a>
+
+        <h1 class="h3 mt-3 mb-3">Return this item</h1>
+
+        <div class="card mb-3">
+            <div class="card-body d-flex gap-3">
+                {% with img=req.resource.images.all.0 %}
+                    {% if img %}
+                        <img src="{{ img.image.url }}" alt="{{ req.resource.title }}" class="rounded"
+                             style="width: 80px; height: 80px; object-fit: cover;">
+                    {% endif %}
+                {% endwith %}
+                <div>
+                    <div class="fw-bold">{{ req.resource.title }}</div>
+                    <div class="small text-muted">
+                        Owner: {{ req.resource.owner.first_name|default:req.resource.owner.username }}
+                    </div>
+                    {% if req.return_by %}
+                        <div class="small {% if req.status == 'overdue' %}text-danger{% else %}text-muted{% endif %}">
+                            Due {{ req.return_by|date:"j M Y" }}{% if req.status == 'overdue' %} (overdue){% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <p>
+            Confirm that you have given <strong>{{ req.resource.title }}</strong> back to the owner.
+            The owner will then check it and complete the request.
+        </p>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="note" class="form-label">Note about the item's condition (optional)</label>
+                <textarea name="note" id="note" rows="3" maxlength="500" class="form-control"
+                          placeholder="For example: Returned with the charger, works perfectly."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Yes, I have returned it</button>
+            <a href="{% url 'request_detail' req.pk %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
