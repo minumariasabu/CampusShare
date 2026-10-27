@@ -1,10 +1,10 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count
+from django.core.paginator import Paginator
+from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404, render, redirect
-
 from .forms import ResourceForm, ResourceEditForm
-from .models import Resource, ResourceImage
+from .models import Category, Resource, ResourceImage
 
 MAX_IMAGES = 5
 
@@ -104,4 +104,60 @@ def delete_resource(request, pk):
     return render(request, 'resources/delete_resource.html', {
         'resource': resource,
         'has_requests': has_requests,
+    })
+
+@login_required
+def browse(request):
+    resources = (
+        Resource.objects.filter(is_hidden=False)
+        .select_related('owner', 'category')
+        .prefetch_related('images')
+        .annotate(
+            owner_rating=Avg('owner__reviews_received__rating'),
+            owner_review_count=Count('owner__reviews_received', distinct=True),
+        )
+        .order_by('-created_at')
+    )
+
+    q = request.GET.get('q', '').strip()
+    category = request.GET.get('category', '')
+    listing_type = request.GET.get('type', '')
+    condition = request.GET.get('condition', '')
+    availability = request.GET.get('availability', '')
+
+    if q:
+        resources = resources.filter(
+            Q(title__icontains=q)
+            | Q(description__icontains=q)
+            | Q(category__name__icontains=q)
+        )
+    if category.isdigit():
+        resources = resources.filter(category_id=category)
+    if listing_type in dict(Resource.LISTING_TYPE_CHOICES):
+        resources = resources.filter(listing_type=listing_type)
+    if condition in dict(Resource.CONDITION_CHOICES):
+        resources = resources.filter(condition=condition)
+    if availability == 'available':
+        resources = resources.filter(status='available')
+
+    paginator = Paginator(resources, 9)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    params = request.GET.copy()
+    params.pop('page', None)
+
+    return render(request, 'resources/browse.html', {
+        'page_obj': page_obj,
+        'total': paginator.count,
+        'categories': Category.objects.all(),
+        'type_choices': Resource.LISTING_TYPE_CHOICES,
+        'condition_choices': Resource.CONDITION_CHOICES,
+        'filters': {
+            'q': q,
+            'category': category,
+            'type': listing_type,
+            'condition': condition,
+            'availability': availability,
+        },
+        'querystring': params.urlencode(),
     })

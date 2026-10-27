@@ -5,7 +5,7 @@
     <h1 class="display-5 fw-bold">Share what you have. Find what you need.</h1>
     <p class="lead text-muted">CampusShare lets students on your campus lend, donate, and exchange items.</p>
     <a href="{% url 'register' %}" class="btn btn-primary btn-lg me-2">Get started</a>
-    <a href="#" class="btn btn-outline-primary btn-lg">Browse items</a>
+    <a href="{% url 'browse' %}" class="btn btn-outline-primary btn-lg">Browse items</a>
 </div>
 
 <h2 class="h4 text-center mb-4">How it works</h2>
@@ -27,7 +27,7 @@
 <h2 class="h4 text-center mb-4">Categories</h2>
 <div class="d-flex flex-wrap justify-content-center gap-2 mb-5">
     {% for category in categories %}
-        <span class="badge bg-secondary fs-6">{{ category.name }}</span>
+        <a href="{% url 'browse' %}?category={{ category.pk }}" class="badge bg-secondary fs-6 text-decoration-none">{{ category.name }}</a>
     {% empty %}
         <p class="text-muted">No categories yet.</p>
     {% endfor %}

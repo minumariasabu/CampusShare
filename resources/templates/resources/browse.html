@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Browse - CampusShare{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Browse resources</h1>
+
+<form method="get" class="card card-body mb-4">
+    <div class="row g-2">
+        <div class="col-12 col-md-6">
+            <input type="text" name="q" value="{{ filters.q }}" class="form-control"
+                   placeholder="Search by title, description or category">
+        </div>
+        <div class="col-6 col-md-3">
+            <select name="category" class="form-select">
+                <option value="">All categories</option>
+                {% for c in categories %}
+                    <option value="{{ c.pk }}" {% if filters.category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <select name="type" class="form-select">
+                <option value="">Borrow, donate or exchange</option>
+                {% for value, label in type_choices %}
+                    <option value="{{ value }}" {% if filters.type == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <select name="condition" class="form-select">
+                <option value="">Any condition</option>
+                {% for value, label in condition_choices %}
+                    <option value="{{ value }}" {% if filters.condition == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <select name="availability" class="form-select">
+                <option value="">Any availability</option>
+                <option value="available" {% if filters.availability == 'available' %}selected{% endif %}>Available now</option>
+            </select>
+        </div>
+        <div class="col-12 col-md-6 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Search</button>
+            <a href="{% url 'browse' %}" class="btn btn-outline-secondary">Clear</a>
+        </div>
+    </div>
+</form>
+
+<p class="text-muted">{{ total }} item{{ total|pluralize }} found</p>
+
+<div class="row g-3">
+    {% for r in page_obj %}
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100">
+            {% with img=r.images.all.0 %}
+                {% if img %}
+                    <img src="{{ img.image.url }}" alt="{{ r.title }}" class="card-img-top"
+                         style="height: 180px; object-fit: cover;">
+                {% else %}
+                    <div class="bg-light text-muted d-flex align-items-center justify-content-center"
+                         style="height: 180px;">No photo</div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="card-body">
+                <h2 class="h5 card-title">{{ r.title }}</h2>
+                <p class="text-muted small mb-2">
+                    {{ r.category.name|default:"No category" }} &middot; {{ r.get_listing_type_display }}
+                    &middot; {{ r.get_condition_display }}
+                </p>
+                <p class="small mb-1">
+                    By {{ r.owner.first_name|default:r.owner.username }}
+                    {% if r.owner_id == user.id %}<span class="badge bg-info text-dark">Your item</span>{% endif %}
+                </p>
+                <p class="small mb-2">
+                    {% if r.owner_review_count %}
+                        &#9733; {{ r.owner_rating|floatformat:1 }} ({{ r.owner_review_count }})
+                    {% else %}
+                        <span class="text-muted">No ratings yet</span>
+                    {% endif %}
+                </p>
+                {% if r.status == 'available' %}
+                    <span class="badge bg-success">Available</span>
+                {% elif r.status == 'lent_out' %}
+                    <span class="badge bg-warning text-dark">Lent out</span>
+                {% else %}
+                    <span class="badge bg-secondary">Unavailable</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center text-muted py-5">
+        <p>No items match your search.</p>
+        <a href="{% url 'browse' %}" class="btn btn-outline-primary">Clear filters</a>
+    </div>
+    {% endfor %}
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+        {% endif %}
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}
