@@ -312,3 +312,72 @@ def return_item(request, pk):
         return redirect('request_detail', pk=req.pk)
 
     return render(request, 'borrowing/return_item.html', {'req': req})
+
+@login_required
+def confirm_return(request, pk):
+    req = get_object_or_404(
+        Request.objects.select_related('resource', 'borrower')
+        .prefetch_related('resource__images'),
+        pk=pk, resource__owner=request.user,
+    )
+
+    if req.status != 'return_initiated':
+        messages.error(request, "There is no return waiting for your confirmation.")
+        return redirect('request_detail', pk=req.pk)
+
+    error = None
+    selected = ''
+
+    if request.method == 'POST':
+        selected = request.POST.get('condition', '')
+        notes = request.POST.get('notes', '').strip()[:500]
+
+        if selected not in dict(Request.RETURN_CONDITION_CHOICES):
+            error = "Please choose the condition of the item."
+        else:
+            with transaction.atomic():
+                req = get_object_or_404(
+                    Request.objects.select_for_update().select_related('resource'),
+                    pk=pk, resource__owner=request.user,
+                )
+                if req.status != 'return_initiated':
+                    messages.error(request, "This return was already handled.")
+                    return redirect('request_detail', pk=req.pk)
+
+                resource = req.resource
+                req.status = 'completed'
+                req.completed_at = timezone.now()
+                req.return_condition = selected
+                req.owner_return_notes = notes
+                req.save(update_fields=[
+                    'status', 'completed_at', 'return_condition', 'owner_return_notes',
+                ])
+
+                # The item is back, so it can be requested again
+                if resource.status == 'lent_out':
+                    resource.status = 'available'
+                    resource.save(update_fields=['status'])
+
+                condition_text = req.get_return_condition_display().lower()
+                notify(
+                    req.borrower, req,
+                    f'Your return of "{resource.title}" was confirmed. '
+                    f'The owner marked it as: {condition_text}.',
+                )
+
+            if selected == 'good':
+                messages.success(request, "Return confirmed. The item is available again.")
+            else:
+                messages.warning(
+                    request,
+                    "Return confirmed, and the item is available again. "
+                    "If it needs repair, edit the listing and turn availability off.",
+                )
+            return redirect('request_detail', pk=req.pk)
+
+    return render(request, 'borrowing/confirm_return.html', {
+        'req': req,
+        'condition_choices': Request.RETURN_CONDITION_CHOICES,
+        'selected': selected,
+        'error': error,
+    })

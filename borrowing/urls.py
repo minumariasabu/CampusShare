@@ -10,4 +10,6 @@ urlpatterns = [
     path('<int:pk>/reject/', views.reject_request, name='reject_request'),
     path('<int:pk>/received/', views.mark_received, name='mark_received'),
     path('<int:pk>/return/', views.return_item, name='return_item'),
+    path('<int:pk>/confirm-return/', views.confirm_return, name='confirm_return'),
 ]
+

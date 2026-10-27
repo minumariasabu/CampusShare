@@ -44,6 +44,7 @@ class Request(models.Model):
         max_length=20, choices=RETURN_CONDITION_CHOICES, blank=True
     )
     return_notes = models.TextField(blank=True)
+    owner_return_notes = models.TextField(blank=True, default='')
     handed_over_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
