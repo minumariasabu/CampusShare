@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - CampusShare{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+    <div class="col-lg-4">
+        <div class="card text-center">
+            <div class="card-body">
+                {% if profile.photo %}
+                    <img src="{{ profile.photo.url }}" alt="Profile photo" class="rounded-circle mb-3"
+                         style="width: 120px; height: 120px; object-fit: cover;">
+                {% else %}
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto mb-3"
+                         style="width: 120px; height: 120px; font-size: 3rem;">
+                        {{ profile.first_name|default:profile.username|slice:":1"|upper }}
+                    </div>
+                {% endif %}
+
+                <h1 class="h4 mb-1">{{ profile.first_name|default:profile.username }}</h1>
+                <div class="text-muted small">Member since {{ profile.date_joined|date:"M Y" }}</div>
+
+                <div class="my-3">
+                    {% if review_count %}
+                        <span class="fs-4">&#9733; {{ rating|floatformat:1 }}</span>
+                        <div class="text-muted small">{{ review_count }} review{{ review_count|pluralize }}</div>
+                    {% else %}
+                        <span class="text-muted">No ratings yet</span>
+                    {% endif %}
+                </div>
+
+                <a href="{% url 'edit_profile' %}" class="btn btn-primary w-100 mb-2">Edit profile</a>
+                <a href="{% url 'password_change' %}" class="btn btn-outline-secondary w-100">Change password</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h6">Details</h2>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-8">{{ profile.email }}</dd>
+
+                    <dt class="col-sm-4">Department</dt>
+                    <dd class="col-sm-8">{{ profile.department|default:"Not set" }}</dd>
+
+                    <dt class="col-sm-4">Year</dt>
+                    <dd class="col-sm-8">{{ profile.year|default:"Not set" }}</dd>
+
+                    <dt class="col-sm-4">Phone</dt>
+                    <dd class="col-sm-8">{{ profile.phone|default:"Not set" }}</dd>
+
+                    <dt class="col-sm-4">College</dt>
+                    <dd class="col-sm-8">{{ profile.institution.name|default:"Not set" }}</dd>
+                </dl>
+            </div>
+        </div>
+
+        <h2 class="h5 mb-3">Reviews I've received</h2>
+        {% for rv in reviews %}
+            <div class="border rounded p-3 mb-2">
+                <div>
+                    <strong>&#9733; {{ rv.rating }}/5</strong>
+                    <span class="text-muted small">
+                        &middot; {{ rv.reviewer.first_name|default:"A student" }}
+                        &middot; for {{ rv.request.resource.title }}
+                        &middot; {{ rv.created_at|date:"j M Y" }}
+                    </span>
+                </div>
+                {% if rv.comment %}<div>{{ rv.comment }}</div>{% endif %}
+            </div>
+        {% empty %}
+            <p class="text-muted">No reviews yet. They appear after you complete a transaction.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -23,7 +23,7 @@
                     Notifications
                     {% if unread_count %}<span class="badge bg-danger">{{ unread_count }}</span>{% endif %}
                 </a>
-                <span class="text-white me-3">Hi, {{ user.first_name|default:user.username }}</span>
+                <a class="text-white me-3 text-decoration-none" href="{% url 'my_profile' %}">Hi, {{ user.first_name|default:user.username }}</a>
                 <form method="post" action="{% url 'logout' %}" class="m-0">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-outline-light btn-sm">Logout</button>

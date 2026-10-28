@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Profile - CampusShare{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h1 class="h3 mb-4">Edit profile</h1>
+
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label">College email</label>
+                <input type="text" class="form-control" value="{{ user.email }}" disabled>
+                <div class="form-text">Your email is your login, so it can't be changed here.</div>
+            </div>
+
+            {% for field in form %}
+                <div class="mb-3">
+                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% for error in field.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+
+            <button type="submit" class="btn btn-primary">Save changes</button>
+            <a href="{% url 'my_profile' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
