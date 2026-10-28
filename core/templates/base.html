@@ -24,6 +24,9 @@
                     {% if unread_count %}<span class="badge bg-danger">{{ unread_count }}</span>{% endif %}
                 </a>
                 <a class="text-white me-3 text-decoration-none" href="{% url 'my_profile' %}">Hi, {{ user.first_name|default:user.username }}</a>
+                {% if user.is_staff %}
+                    <a class="text-warning me-3 text-decoration-none fw-bold" href="{% url 'admin_dashboard' %}">Admin</a>
+                {% endif %}
                 <form method="post" action="{% url 'logout' %}" class="m-0">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-outline-light btn-sm">Logout</button>

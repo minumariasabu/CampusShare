@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'resources',
     'borrowing',
     'core',
+    'adminpanel',
 ]
 
 MIDDLEWARE = [
@@ -130,7 +131,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'accounts.User'
 
 LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'dashboard'
+LOGIN_REDIRECT_URL = 'post_login'
 LOGOUT_REDIRECT_URL = 'home'
 # Prints emails in the terminal instead of sending them (for testing)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

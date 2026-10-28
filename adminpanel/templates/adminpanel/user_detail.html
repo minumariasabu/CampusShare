@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}{{ target.first_name|default:target.username }} - Admin - CampusShare{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">User details</h1>
+{% include "adminpanel/_nav.html" with active="users" %}
+
+<a href="{% url 'admin_users' %}" class="text-decoration-none">&larr; Back to users</a>
+
+<div class="row g-4 mt-1">
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5 mb-1">{{ target.first_name|default:target.username }}
+                    {% if target.is_staff %}<span class="badge bg-dark">Admin</span>
+                    {% elif target.is_active %}<span class="badge bg-success">Active</span>
+                    {% else %}<span class="badge bg-danger">Deactivated</span>{% endif %}
+                </h2>
+                <dl class="row mb-3 mt-3">
+                    <dt class="col-sm-4">Email</dt><dd class="col-sm-8">{{ target.email|default:"-" }}</dd>
+                    <dt class="col-sm-4">Department</dt><dd class="col-sm-8">{{ target.department|default:"-" }}</dd>
+                    <dt class="col-sm-4">Year</dt><dd class="col-sm-8">{{ target.year|default:"-" }}</dd>
+                    <dt class="col-sm-4">Phone</dt><dd class="col-sm-8">{{ target.phone|default:"-" }}</dd>
+                    <dt class="col-sm-4">College</dt><dd class="col-sm-8">{{ target.institution.name|default:"-" }}</dd>
+                    <dt class="col-sm-4">Joined</dt><dd class="col-sm-8">{{ target.date_joined|date:"j M Y" }}</dd>
+                    <dt class="col-sm-4">Verified</dt><dd class="col-sm-8">{% if target.is_verified %}Yes{% else %}No{% endif %}</dd>
+                    <dt class="col-sm-4">Rating</dt>
+                    <dd class="col-sm-8">
+                        {% if review_count %}&#9733; {{ rating|floatformat:1 }} ({{ review_count }}){% else %}No ratings{% endif %}
+                    </dd>
+                </dl>
+
+                {% if not target.is_staff and target.pk != user.pk %}
+                <div class="d-flex gap-2">
+                    <form method="post" action="{% url 'admin_user_toggle' target.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{% url 'admin_user_detail' target.pk %}">
+                        {% if target.is_active %}
+                            <button type="submit" class="btn btn-warning"
+                                    onclick="return confirm('Deactivate this user? They will not be able to log in.');">Deactivate</button>
+                        {% else %}
+                            <button type="submit" class="btn btn-success">Activate</button>
+                        {% endif %}
+                    </form>
+                    <form method="post" action="{% url 'admin_user_delete' target.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger"
+                                onclick="return confirm('Permanently delete this user? This cannot be undone.');">Delete</button>
+                    </form>
+                </div>
+                <div class="form-text">Delete works only for users with no listings, requests, reviews or complaints.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="row g-3 mb-3 text-center">
+            <div class="col-4 col-md"><div class="card"><div class="card-body py-2"><div class="h4 mb-0">{{ listing_count }}</div><div class="small text-muted">Listings</div></div></div></div>
+            <div class="col-4 col-md"><div class="card"><div class="card-body py-2"><div class="h4 mb-0">{{ borrowed_count }}</div><div class="small text-muted">Requests made</div></div></div></div>
+            <div class="col-4 col-md"><div class="card"><div class="card-body py-2"><div class="h4 mb-0">{{ lent_count }}</div><div class="small text-muted">Requests received</div></div></div></div>
+            <div class="col-6 col-md"><div class="card"><div class="card-body py-2"><div class="h4 mb-0">{{ complaints_filed }}</div><div class="small text-muted">Reports filed</div></div></div></div>
+            <div class="col-6 col-md"><div class="card"><div class="card-body py-2"><div class="h4 mb-0 {% if complaints_against %}text-danger{% endif %}">{{ complaints_against }}</div><div class="small text-muted">Reports against</div></div></div></div>
+        </div>
+
+        <h2 class="h6">Recent listings</h2>
+        <ul class="list-group mb-3">
+            {% for r in listings %}
+            <li class="list-group-item d-flex justify-content-between">
+                <span>{{ r.title }}{% if r.is_hidden %} <span class="badge bg-danger">Hidden</span>{% endif %}</span>
+                <span class="small text-muted">{{ r.get_status_display }}</span>
+            </li>
+            {% empty %}
+            <li class="list-group-item text-muted">No listings.</li>
+            {% endfor %}
+        </ul>
+
+        <h2 class="h6">Recent requests made</h2>
+        <ul class="list-group mb-3">
+            {% for r in requests_made %}
+            <li class="list-group-item d-flex justify-content-between">
+                <span>{{ r.resource.title }}</span>
+                <span class="small text-muted">{{ r.get_status_display }} &middot; {{ r.created_at|date:"j M Y" }}</span>
+            </li>
+            {% empty %}
+            <li class="list-group-item text-muted">No requests made.</li>
+            {% endfor %}
+        </ul>
+
+        <h2 class="h6">Recent requests received</h2>
+        <ul class="list-group">
+            {% for r in requests_received %}
+            <li class="list-group-item d-flex justify-content-between">
+                <span>{{ r.borrower.first_name|default:r.borrower.username }} &rarr; {{ r.resource.title }}</span>
+                <span class="small text-muted">{{ r.get_status_display }} &middot; {{ r.created_at|date:"j M Y" }}</span>
+            </li>
+            {% empty %}
+            <li class="list-group-item text-muted">No requests received.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

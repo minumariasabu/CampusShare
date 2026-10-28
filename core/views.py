@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from borrowing.models import Notification, Request as BorrowRequest
@@ -39,3 +39,9 @@ def dashboard(request):
         'notifications': notifications,
     }
     return render(request, 'core/dashboard.html', context)
+
+@login_required
+def post_login(request):
+    if request.user.is_staff:
+        return redirect('admin_dashboard')
+    return redirect('dashboard')

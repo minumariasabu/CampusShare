@@ -112,7 +112,7 @@ def delete_resource(request, pk):
 @login_required
 def browse(request):
     resources = (
-        Resource.objects.filter(is_hidden=False)
+        Resource.objects.filter(is_hidden=False, owner__is_active=True)
         .select_related('owner', 'category')
         .prefetch_related('images')
         .annotate(
@@ -174,7 +174,7 @@ def resource_detail(request, pk):
     is_owner = resource.owner_id == request.user.id
 
     # Items hidden by an admin are visible only to their owner and to admins
-    if resource.is_hidden and not is_owner and not request.user.is_staff:
+    if (resource.is_hidden or not resource.owner.is_active) and not is_owner and not request.user.is_staff:
         raise Http404
 
     # Has this user already got a request in progress for this item?

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - CampusShare{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Admin dashboard</h1>
+{% include "adminpanel/_nav.html" with active="dashboard" %}
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'admin_users' %}" class="text-decoration-none text-reset">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="display-6">{{ stats.total_users }}</div>
+                    <div class="text-muted">Students</div>
+                    {% if stats.inactive_users %}<div class="small text-danger">{{ stats.inactive_users }} deactivated</div>{% endif %}
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-6">{{ stats.total_listings }}</div>
+                <div class="text-muted">Listings</div>
+                {% if stats.hidden_listings %}<div class="small text-danger">{{ stats.hidden_listings }} hidden</div>{% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-6">{{ stats.active_transactions }}</div>
+                <div class="text-muted">Active transactions</div>
+                <div class="small text-muted">{{ stats.pending_requests }} pending</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-6 {% if stats.open_complaints %}text-danger{% endif %}">{{ stats.open_complaints }}</div>
+                <div class="text-muted">Open complaints</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2 class="h5 mb-3">Recent activity</h2>
+<div class="row g-3">
+
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header">New students</div>
+            <ul class="list-group list-group-flush">
+                {% for u in new_users %}
+                <li class="list-group-item">
+                    <a href="{% url 'admin_user_detail' u.pk %}" class="text-decoration-none">{{ u.first_name|default:u.username }}</a>
+                    <div class="small text-muted">{{ u.date_joined|timesince }} ago</div>
+                </li>
+                {% empty %}
+                <li class="list-group-item text-muted">No students yet.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header">Latest requests</div>
+            <ul class="list-group list-group-flush">
+                {% for r in recent_requests %}
+                <li class="list-group-item">
+                    <div>{{ r.borrower.first_name|default:r.borrower.username }} &rarr; {{ r.resource.title }}</div>
+                    <div class="small text-muted">{{ r.get_status_display }} &middot; {{ r.created_at|timesince }} ago</div>
+                </li>
+                {% empty %}
+                <li class="list-group-item text-muted">No requests yet.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header">Latest complaints</div>
+            <ul class="list-group list-group-flush">
+                {% for c in recent_complaints %}
+                <li class="list-group-item">
+                    <div>{{ c.reason }}</div>
+                    <div class="small text-muted">
+                        By {{ c.reporter.first_name|default:c.reporter.username }}
+                        &middot; {{ c.get_status_display }} &middot; {{ c.created_at|timesince }} ago
+                    </div>
+                </li>
+                {% empty %}
+                <li class="list-group-item text-muted">No complaints.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<p class="text-muted small mt-3">Charts and usage statistics are added on the Reports page (Day 26).</p>
+{% endblock %}

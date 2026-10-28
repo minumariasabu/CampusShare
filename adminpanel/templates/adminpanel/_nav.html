@@ -1,0 +1,8 @@
+<ul class="nav nav-pills mb-4">
+    <li class="nav-item">
+        <a class="nav-link {% if active == 'dashboard' %}active{% endif %}" href="{% url 'admin_dashboard' %}">Dashboard</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if active == 'users' %}active{% endif %}" href="{% url 'admin_users' %}">Users</a>
+    </li>
+</ul>
