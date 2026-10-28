@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Rate & Review - CampusShare{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <a href="{% url 'request_detail' req.pk %}" class="text-decoration-none">&larr; Back to request</a>
+
+        <h1 class="h3 mt-3 mb-1">Rate {{ reviewee.first_name|default:reviewee.username }}</h1>
+        <p class="text-muted">For the request on <strong>{{ req.resource.title }}</strong></p>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label d-block">Your rating</label>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for radio in form.rating %}
+                        {{ radio.tag }}
+                        <label class="btn btn-outline-warning" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                    {% endfor %}
+                </div>
+                {% for error in form.rating.errors %}
+                    <div class="text-danger small mt-1">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.comment.id_for_label }}" class="form-label">{{ form.comment.label }}</label>
+                {{ form.comment }}
+                {% for error in form.comment.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit review</button>
+            <a href="{% url 'request_detail' req.pk %}" class="btn btn-outline-secondary ms-2">Skip for now</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

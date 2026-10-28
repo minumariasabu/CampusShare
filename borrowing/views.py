@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Avg, Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -8,7 +8,8 @@ from django.http import Http404
 from django.utils import timezone
 from django.core.paginator import Paginator
 
-from .models import Notification, Request
+from .forms import ReviewForm
+from .models import Notification, Request, Review
 
 # (tab key, label, statuses shown in that tab; None means "all")
 TABS = [
@@ -223,6 +224,11 @@ def request_detail(request, pk):
     other = req.resource.owner if is_borrower else req.borrower
     show_contact = req.status in ('approved', 'handed_over', 'return_initiated', 'overdue')
 
+    request_reviews = list(Review.objects.filter(request=req).select_related('reviewer'))
+    my_review = next((r for r in request_reviews if r.reviewer_id == request.user.id), None)
+    their_review = next((r for r in request_reviews if r.reviewer_id != request.user.id), None)
+    can_review = req.status == 'completed' and my_review is None
+
     return render(request, 'borrowing/request_detail.html', {
         'req': req,
         'is_borrower': is_borrower,
@@ -230,6 +236,9 @@ def request_detail(request, pk):
         'other': other,
         'show_contact': show_contact,
         'timeline': build_timeline(req),
+        'my_review': my_review,
+        'their_review': their_review,
+        'can_review': can_review,
     })
 
 
@@ -374,7 +383,7 @@ def confirm_return(request, pk):
                     "Return confirmed, and the item is available again. "
                     "If it needs repair, edit the listing and turn availability off.",
                 )
-            return redirect('request_detail', pk=req.pk)
+            return redirect('review_request', pk=req.pk)
 
     return render(request, 'borrowing/confirm_return.html', {
         'req': req,
@@ -418,3 +427,56 @@ def mark_all_read(request):
     Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
     messages.success(request, "All notifications marked as read.")
     return redirect('notifications')
+
+@login_required
+def review_request(request, pk):
+    req = get_object_or_404(
+        Request.objects.select_related('resource', 'resource__owner', 'borrower'),
+        pk=pk,
+    )
+    is_borrower = req.borrower_id == request.user.id
+    is_owner = req.resource.owner_id == request.user.id
+
+    # Only the two people in the transaction can review
+    if not (is_borrower or is_owner):
+        raise Http404
+
+    if req.status != 'completed':
+        messages.error(request, "You can rate the other person once the request is completed.")
+        return redirect('request_detail', pk=req.pk)
+
+    if Review.objects.filter(request=req, reviewer=request.user).exists():
+        messages.warning(request, "You have already reviewed this transaction.")
+        return redirect('request_detail', pk=req.pk)
+
+    reviewee = req.resource.owner if is_borrower else req.borrower
+
+    if request.method == 'POST':
+        form = ReviewForm(request.POST)
+        if form.is_valid():
+            review = form.save(commit=False)
+            review.request = req
+            review.reviewer = request.user
+            review.reviewee = reviewee
+            try:
+                with transaction.atomic():
+                    review.save()
+            except IntegrityError:
+                messages.warning(request, "You have already reviewed this transaction.")
+                return redirect('request_detail', pk=req.pk)
+
+            who = request.user.first_name or "A student"
+            notify(
+                reviewee, req,
+                f'{who} rated you {review.rating}/5 for "{req.resource.title}".',
+            )
+            messages.success(request, "Thank you! Your review has been saved.")
+            return redirect('request_detail', pk=req.pk)
+    else:
+        form = ReviewForm()
+
+    return render(request, 'borrowing/review_form.html', {
+        'req': req,
+        'form': form,
+        'reviewee': reviewee,
+    })

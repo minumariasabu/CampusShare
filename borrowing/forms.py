@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from .models import Request
+from .models import Request, Review
 
 # A request in any of these states is "still in progress"
 ACTIVE_STATUSES = ['pending', 'approved', 'handed_over', 'return_initiated', 'overdue']
@@ -90,3 +90,30 @@ class RequestForm(forms.ModelForm):
         if commit:
             req.save()
         return req
+
+class ReviewForm(forms.ModelForm):
+    rating = forms.TypedChoiceField(
+        choices=[
+            (5, '5 ★ Excellent'),
+            (4, '4 ★ Good'),
+            (3, '3 ★ Okay'),
+            (2, '2 ★ Poor'),
+            (1, '1 ★ Bad'),
+        ],
+        coerce=int,
+        widget=forms.RadioSelect(attrs={'class': 'btn-check'}),
+        error_messages={'required': 'Please choose a star rating.'},
+    )
+    comment = forms.CharField(
+        required=False,
+        max_length=500,
+        label='Comment (optional)',
+        widget=forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+    )
+
+    class Meta:
+        model = Review
+        fields = ['rating', 'comment']
+
+    def clean_comment(self):
+        return self.cleaned_data['comment'].strip()

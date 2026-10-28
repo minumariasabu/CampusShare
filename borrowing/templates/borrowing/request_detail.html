@@ -174,6 +174,32 @@
                 <p class="text-muted small">Nothing more to do on this request.</p>
             {% endif %}
         {% endif %}
+                {% endif %}
+
+        {% if req.status == 'completed' %}
+        <h2 class="h6 mt-4">Reviews</h2>
+
+        {% if my_review %}
+            <div class="border rounded p-3 mb-2">
+                <div class="small text-muted">Your review of {{ other.first_name|default:other.username }}</div>
+                <strong>&#9733; {{ my_review.rating }}/5</strong>
+                {% if my_review.comment %}<div>{{ my_review.comment }}</div>{% endif %}
+            </div>
+        {% elif can_review %}
+            <p class="text-muted small">Share how it went. Your rating helps other students.</p>
+            <a href="{% url 'review_request' req.pk %}" class="btn btn-warning">Rate {{ other.first_name|default:other.username }}</a>
+        {% endif %}
+
+        {% if their_review %}
+            <div class="border rounded p-3 mt-2">
+                <div class="small text-muted">{{ other.first_name|default:other.username }}'s review of you</div>
+                <strong>&#9733; {{ their_review.rating }}/5</strong>
+                {% if their_review.comment %}<div>{{ their_review.comment }}</div>{% endif %}
+            </div>
+        {% endif %}
+        {% endif %}
     </div>
 </div>
 {% endblock %}
+
+    
