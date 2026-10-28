@@ -3,7 +3,10 @@
 {% block title %}My Requests - CampusShare{% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-3">My requests</h1>
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <h1 class="h3 mb-0">My requests</h1>
+    <a href="{% url 'borrowing_history' %}" class="btn btn-outline-secondary btn-sm">Borrowing history</a>
+</div>
 
 <ul class="nav nav-tabs mb-3">
     {% for t in tabs %}

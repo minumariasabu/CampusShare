@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Borrowing History - CampusShare{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <h1 class="h3 mb-0">Borrowing history</h1>
+    <a href="{% url 'my_requests' %}" class="btn btn-outline-primary btn-sm">Back to My Requests</a>
+</div>
+
+<form method="get" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-3">
+            <label for="status" class="form-label small mb-1">Status</label>
+            <select name="status" id="status" class="form-select">
+                <option value="">All finished</option>
+                {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <label for="from" class="form-label small mb-1">Requested from</label>
+            <input type="date" name="from" id="from" value="{{ date_from }}" class="form-control">
+        </div>
+        <div class="col-6 col-md-3">
+            <label for="to" class="form-label small mb-1">Requested to</label>
+            <input type="date" name="to" id="to" value="{{ date_to }}" class="form-control">
+        </div>
+        <div class="col-12 col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a href="{% url 'borrowing_history' %}" class="btn btn-outline-secondary">Clear</a>
+        </div>
+    </div>
+    {% if date_error %}<div class="text-danger small mt-2">{{ date_error }}</div>{% endif %}
+</form>
+
+<p class="text-muted">{{ total }} request{{ total|pluralize }} found</p>
+
+{% if page_obj %}
+<div class="table-responsive">
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Owner</th>
+                <th>Type</th>
+                <th>Requested</th>
+                <th>Finished</th>
+                <th>Status</th>
+                <th class="text-end"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in page_obj %}
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        {% with img=r.resource.images.all.0 %}
+                            {% if img %}
+                                <img src="{{ img.image.url }}" alt="{{ r.resource.title }}" class="rounded"
+                                     style="width: 48px; height: 48px; object-fit: cover;">
+                            {% else %}
+                                <div class="bg-light rounded text-muted small d-flex align-items-center justify-content-center"
+                                     style="width: 48px; height: 48px;">&mdash;</div>
+                            {% endif %}
+                        {% endwith %}
+                        <span>{{ r.resource.title }}</span>
+                    </div>
+                </td>
+                <td>{{ r.resource.owner.first_name|default:r.resource.owner.username }}</td>
+                <td>{{ r.get_request_type_display }}</td>
+                <td class="small">{{ r.created_at|date:"j M Y" }}</td>
+                <td class="small">
+                    {% if r.completed_at %}{{ r.completed_at|date:"j M Y" }}{% else %}&mdash;{% endif %}
+                </td>
+                <td>
+                    {% if r.status == 'completed' %}
+                        <span class="badge bg-success">Completed</span>
+                    {% elif r.status == 'rejected' %}
+                        <span class="badge bg-secondary">Rejected</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Cancelled</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <a href="{% url 'request_detail' r.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+        {% endif %}
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="text-center text-muted py-5">
+    <p>No finished requests match your filters.</p>
+    <a href="{% url 'browse' %}" class="btn btn-primary">Browse items</a>
+</div>
+{% endif %}
+{% endblock %}

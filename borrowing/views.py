@@ -10,6 +10,7 @@ from django.core.paginator import Paginator
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.dateparse import parse_date
 
 from resources.models import Resource
 from .forms import ComplaintForm, ReviewForm
@@ -570,3 +571,64 @@ def report_user(request, pk):
         subject=f'{name}',
         initial=initial,
     )
+
+HISTORY_STATUSES = ['completed', 'rejected', 'cancelled']
+
+
+def _parse_date(value):
+    """Turn '2026-10-28' into a date, or None if it is empty or invalid."""
+    try:
+        return parse_date(value) if value else None
+    except ValueError:
+        return None
+
+
+@login_required
+def borrowing_history(request):
+    qs = (
+        Request.objects.filter(borrower=request.user, status__in=HISTORY_STATUSES)
+        .select_related('resource', 'resource__owner')
+        .prefetch_related('resource__images')
+        .order_by('-created_at')
+    )
+
+    status = request.GET.get('status', '')
+    from_raw = request.GET.get('from', '')
+    to_raw = request.GET.get('to', '')
+    date_from = _parse_date(from_raw)
+    date_to = _parse_date(to_raw)
+    date_error = None
+
+    if status in HISTORY_STATUSES:
+        qs = qs.filter(status=status)
+    else:
+        status = ''
+
+    if date_from and date_to and date_from > date_to:
+        date_error = "The 'from' date must be on or before the 'to' date."
+    else:
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
+
+    paginator = Paginator(qs, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    params = request.GET.copy()
+    params.pop('page', None)
+
+    return render(request, 'borrowing/borrowing_history.html', {
+        'page_obj': page_obj,
+        'total': paginator.count,
+        'status': status,
+        'date_from': date_from.isoformat() if date_from else '',
+        'date_to': date_to.isoformat() if date_to else '',
+        'date_error': date_error,
+        'status_choices': [
+            ('completed', 'Completed'),
+            ('rejected', 'Rejected'),
+            ('cancelled', 'Cancelled'),
+        ],
+        'querystring': params.urlencode(),
+    })

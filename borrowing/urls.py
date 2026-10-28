@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     path('', views.my_requests, name='my_requests'),
     path('incoming/', views.incoming_requests, name='incoming_requests'),
+    path('history/', views.borrowing_history, name='borrowing_history'),
     path('<int:pk>/', views.request_detail, name='request_detail'),
     path('<int:pk>/cancel/', views.cancel_request, name='cancel_request'),
     path('<int:pk>/accept/', views.accept_request, name='accept_request'),
