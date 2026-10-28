@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}{{ profile.first_name|default:profile.username }} - CampusShare{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+    <div class="col-lg-4">
+        <div class="card text-center">
+            <div class="card-body">
+                {% if profile.photo %}
+                    <img src="{{ profile.photo.url }}" alt="Profile photo" class="rounded-circle mb-3"
+                         style="width: 120px; height: 120px; object-fit: cover;">
+                {% else %}
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto mb-3"
+                         style="width: 120px; height: 120px; font-size: 3rem;">
+                        {{ profile.first_name|default:profile.username|slice:":1"|upper }}
+                    </div>
+                {% endif %}
+
+                <h1 class="h4 mb-1">{{ profile.first_name|default:profile.username }}</h1>
+                {% if profile.department %}
+                    <div class="text-muted">{{ profile.department }}{% if profile.year %}, {{ profile.year }}{% endif %}</div>
+                {% endif %}
+                <div class="text-muted small">Member since {{ profile.date_joined|date:"M Y" }}</div>
+
+                <div class="my-3">
+                    {% if review_count %}
+                        <span class="fs-4">&#9733; {{ rating|floatformat:1 }}</span>
+                        <div class="text-muted small">{{ review_count }} review{{ review_count|pluralize }}</div>
+                    {% else %}
+                        <span class="text-muted">No ratings yet</span>
+                    {% endif %}
+                </div>
+
+                <a href="{% url 'report_user' profile.pk %}" class="btn btn-outline-danger btn-sm">Report this user</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <h2 class="h5 mb-3">Available items</h2>
+        <div class="row g-3 mb-4">
+            {% for r in listings %}
+            <div class="col-sm-6">
+                <div class="card h-100">
+                    {% with img=r.images.all.0 %}
+                        {% if img %}
+                            <img src="{{ img.image.url }}" alt="{{ r.title }}" class="card-img-top"
+                                 style="height: 140px; object-fit: cover;">
+                        {% endif %}
+                    {% endwith %}
+                    <div class="card-body">
+                        <h3 class="h6 card-title">
+                            <a href="{% url 'resource_detail' r.pk %}" class="text-decoration-none text-dark stretched-link">{{ r.title }}</a>
+                        </h3>
+                        <div class="small text-muted">{{ r.get_listing_type_display }} &middot; {{ r.get_condition_display }}</div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12"><p class="text-muted">No items available right now.</p></div>
+            {% endfor %}
+        </div>
+
+        <h2 class="h5 mb-3">Reviews</h2>
+        {% for rv in reviews %}
+            <div class="border rounded p-3 mb-2">
+                <div>
+                    <strong>&#9733; {{ rv.rating }}/5</strong>
+                    <span class="text-muted small">
+                        &middot; {{ rv.reviewer.first_name|default:"A student" }}
+                        &middot; for {{ rv.request.resource.title }}
+                        &middot; {{ rv.created_at|date:"j M Y" }}
+                    </span>
+                </div>
+                {% if rv.comment %}<div>{{ rv.comment }}</div>{% endif %}
+            </div>
+        {% empty %}
+            <p class="text-muted">No reviews yet.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

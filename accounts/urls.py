@@ -20,6 +20,7 @@ urlpatterns = [
          name='password_reset'),
     path('profile/', views.my_profile, name='my_profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),
+    path('users/<int:pk>/', views.public_profile, name='public_profile'),
     path('password-change/', views.ChangePasswordView.as_view(), name='password_change'),
     path('password-reset/done/',
          auth_views.PasswordResetDoneView.as_view(template_name='accounts/password_reset_done.html'),

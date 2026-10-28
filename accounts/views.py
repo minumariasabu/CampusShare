@@ -3,8 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import PasswordChangeView
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models import Avg, Count
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
+
+from resources.models import Resource
+from .models import User
 
 from borrowing.models import Review
 from .forms import ProfileForm, RegisterForm, StyledPasswordChangeForm
@@ -56,3 +59,30 @@ class ChangePasswordView(SuccessMessageMixin, PasswordChangeView):
     template_name = 'accounts/password_change.html'
     success_url = reverse_lazy('my_profile')
     success_message = "Your password has been changed."
+
+@login_required
+def public_profile(request, pk):
+    if pk == request.user.pk:
+        return redirect('my_profile')
+
+    profile = get_object_or_404(User.objects.select_related('institution'), pk=pk, is_active=True)
+
+    reviews_qs = Review.objects.filter(reviewee=profile)
+    stats = reviews_qs.aggregate(avg=Avg('rating'), count=Count('id'))
+    reviews = (
+        reviews_qs.select_related('reviewer', 'request__resource')
+        .order_by('-created_at')[:10]
+    )
+    listings = (
+        Resource.objects.filter(owner=profile, is_hidden=False, status='available')
+        .prefetch_related('images')
+        .order_by('-created_at')
+    )
+
+    return render(request, 'accounts/public_profile.html', {
+        'profile': profile,
+        'rating': stats['avg'],
+        'review_count': stats['count'],
+        'reviews': reviews,
+        'listings': listings,
+    })

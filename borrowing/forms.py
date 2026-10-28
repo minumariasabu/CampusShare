@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from .models import Request, Review
+from .models import Complaint, Request, Review
 
 # A request in any of these states is "still in progress"
 ACTIVE_STATUSES = ['pending', 'approved', 'handed_over', 'return_initiated', 'overdue']
@@ -117,3 +117,35 @@ class ReviewForm(forms.ModelForm):
 
     def clean_comment(self):
         return self.cleaned_data['comment'].strip()
+
+class ComplaintForm(forms.ModelForm):
+    DAMAGED = 'Item damaged on return'
+    REASONS = [
+        'Misleading or fake listing',
+        'Item not as described',
+        'Inappropriate content',
+        DAMAGED,
+        'Item was not returned',
+        'Rude or abusive behaviour',
+        'Other',
+    ]
+
+    reason = forms.ChoiceField(
+        choices=[('', 'Select a reason')] + [(r, r) for r in REASONS],
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        error_messages={'required': 'Please choose a reason.'},
+    )
+    description = forms.CharField(
+        min_length=10,
+        max_length=1000,
+        label='What happened?',
+        widget=forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
+        error_messages={'min_length': 'Please give a few more details (at least 10 characters).'},
+    )
+
+    class Meta:
+        model = Complaint
+        fields = ['reason', 'description']
+
+    def clean_description(self):
+        return self.cleaned_data['description'].strip()

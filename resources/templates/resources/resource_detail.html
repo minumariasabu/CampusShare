@@ -81,7 +81,9 @@
         <div class="card mb-3">
             <div class="card-body">
                 <div class="text-muted small">Listed by</div>
-                <div class="fw-bold">{{ resource.owner.first_name|default:resource.owner.username }}</div>
+                <div class="fw-bold">
+                    <a href="{% url 'public_profile' resource.owner.pk %}" class="text-decoration-none">{{ resource.owner.first_name|default:resource.owner.username }}</a>
+                </div>
                 {% if resource.owner.department %}
                     <div class="small text-muted">{{ resource.owner.department }}</div>
                 {% endif %}
@@ -114,7 +116,7 @@
             {% else %}
                 <button class="btn btn-secondary btn-lg" disabled>Not available right now</button>
             {% endif %}
-            <a href="#" class="btn btn-outline-danger ms-2">Report listing</a>
+            <a href="{% url 'report_listing' resource.pk %}" class="btn btn-outline-danger ms-2">Report listing</a>
         {% endif %}
     </div>
 </div>

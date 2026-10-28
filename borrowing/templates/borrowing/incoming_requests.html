@@ -57,7 +57,9 @@
         <div class="row g-3">
             <div class="col-md-4">
                 <div class="text-muted small">Requester</div>
-                <div class="fw-bold">{{ r.borrower.first_name|default:r.borrower.username }}</div>
+                <div class="fw-bold">
+                    <a href="{% url 'public_profile' r.borrower.pk %}" class="text-decoration-none">{{ r.borrower.first_name|default:r.borrower.username }}</a>
+                </div>
                 {% if r.borrower.department %}
                     <div class="small text-muted">{{ r.borrower.department }}{% if r.borrower.year %}, {{ r.borrower.year }}{% endif %}</div>
                 {% endif %}

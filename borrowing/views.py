@@ -1,15 +1,19 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.http import Http404
 from django.utils import timezone
 from django.core.paginator import Paginator
+from django.contrib.auth import get_user_model
+from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 
-from .forms import ReviewForm
-from .models import Notification, Request, Review
+from resources.models import Resource
+from .forms import ComplaintForm, ReviewForm
+from .models import Complaint, Notification, Request, Review
 
 # (tab key, label, statuses shown in that tab; None means "all")
 TABS = [
@@ -480,3 +484,89 @@ def review_request(request, pk):
         'form': form,
         'reviewee': reviewee,
     })
+
+def _safe_next(request, fallback):
+    """Return the page to go back to, but only if it belongs to this site."""
+    nxt = request.POST.get('next') or request.GET.get('next') or ''
+    if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
+        return nxt
+    return fallback
+
+
+def _file_complaint(request, *, reported_user, resource, fallback, subject, initial=None):
+    back = _safe_next(request, fallback)
+
+    already = Complaint.objects.filter(
+        reporter=request.user, reported_user=reported_user,
+        resource=resource, status='open',
+    ).exists()
+    if already:
+        messages.warning(request, "You have already reported this. An admin will review it soon.")
+        return redirect(back)
+
+    if request.method == 'POST':
+        form = ComplaintForm(request.POST)
+        if form.is_valid():
+            complaint = form.save(commit=False)
+            complaint.reporter = request.user
+            complaint.reported_user = reported_user
+            complaint.resource = resource
+            complaint.save()
+            messages.success(request, "Thank you. Your report has been sent to the admin.")
+            return redirect(back)
+    else:
+        form = ComplaintForm(initial=initial or {})
+
+    return render(request, 'borrowing/report_form.html', {
+        'form': form,
+        'subject': subject,
+        'next': back,
+        'resource_id': resource.pk if resource else '',
+    })
+
+
+@login_required
+def report_listing(request, pk):
+    resource = get_object_or_404(Resource, pk=pk, is_hidden=False)
+    if resource.owner_id == request.user.id:
+        messages.error(request, "You can't report your own listing.")
+        return redirect('resource_detail', pk=resource.pk)
+    return _file_complaint(
+        request,
+        reported_user=resource.owner,
+        resource=resource,
+        fallback=reverse('resource_detail', args=[resource.pk]),
+        subject=f'the listing "{resource.title}"',
+    )
+
+
+@login_required
+def report_user(request, pk):
+    target = get_object_or_404(get_user_model(), pk=pk, is_active=True)
+    if target.pk == request.user.pk:
+        messages.error(request, "You can't report yourself.")
+        return redirect('my_profile')
+
+    # Optional: tie the report to an item that belongs to one of the two people
+    resource = None
+    rid = request.POST.get('resource') or request.GET.get('resource') or ''
+    if rid.isdigit():
+        resource = (
+            Resource.objects.filter(pk=rid)
+            .filter(Q(owner=request.user) | Q(owner=target))
+            .first()
+        )
+
+    initial = {}
+    if resource and request.GET.get('reason') == 'damaged':
+        initial['reason'] = ComplaintForm.DAMAGED
+
+    name = target.first_name or target.username
+    return _file_complaint(
+        request,
+        reported_user=target,
+        resource=resource,
+        fallback=reverse('public_profile', args=[target.pk]),
+        subject=f'{name}',
+        initial=initial,
+    )

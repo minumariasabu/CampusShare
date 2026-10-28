@@ -49,7 +49,9 @@
                 <div class="row g-3">
                     <div class="col-sm-6">
                         <div class="text-muted small">{% if is_borrower %}Owner{% else %}Requester{% endif %}</div>
-                        <div class="fw-bold">{{ other.first_name|default:other.username }}</div>
+                        <div class="fw-bold">
+                            <a href="{% url 'public_profile' other.pk %}" class="text-decoration-none">{{ other.first_name|default:other.username }}</a>
+                        </div>
                         {% if other.department %}
                             <div class="small text-muted">{{ other.department }}{% if other.year %}, {{ other.year }}{% endif %}</div>
                         {% endif %}
@@ -151,8 +153,8 @@
             {% elif req.status == 'completed' %}
                 <p class="text-muted small">This request is complete.</p>
                 {% if req.return_condition and req.return_condition != 'good' %}
-                    <a href="#" class="btn btn-outline-danger">Raise complaint</a>
-                    <div class="form-text">The complaint form is added on Day 21.</div>
+                    <a href="{% url 'report_user' req.borrower_id %}?resource={{ req.resource_id }}&reason=damaged&next={% url 'request_detail' req.pk %}"
+                       class="btn btn-outline-danger">Raise complaint</a>
                 {% endif %}
             {% else %}
                 <p class="text-muted small">Nothing more to do on this request.</p>
