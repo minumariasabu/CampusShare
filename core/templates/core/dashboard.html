@@ -50,15 +50,14 @@
 <ul class="list-group">
     {% for n in notifications %}
         <li class="list-group-item {% if not n.is_read %}fw-bold{% endif %}">
-            {% if n.request_id %}
-                <a href="{% url 'request_detail' n.request_id %}" class="text-decoration-none text-reset">{{ n.message }}</a>
-            {% else %}
-                {{ n.message }}
-            {% endif %}
+            <a href="{% url 'open_notification' n.pk %}" class="text-decoration-none text-reset">{{ n.message }}</a>
             <small class="text-muted float-end">{{ n.created_at|timesince }} ago</small>
         </li>
     {% empty %}
         <li class="list-group-item text-muted">No notifications yet.</li>
     {% endfor %}
 </ul>
+<div class="mt-2">
+    <a href="{% url 'notifications' %}">View all notifications</a>
+</div>
 {% endblock %}

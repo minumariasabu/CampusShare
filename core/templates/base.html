@@ -19,6 +19,10 @@
                 <a class="text-white me-3 text-decoration-none" href="{% url 'browse' %}">Browse</a>
                 <a class="text-white me-3 text-decoration-none" href="{% url 'my_requests' %}">My Requests</a>
                 <a class="text-white me-3 text-decoration-none" href="{% url 'incoming_requests' %}">Incoming</a>
+                <a class="text-white me-3 text-decoration-none" href="{% url 'notifications' %}">
+                    Notifications
+                    {% if unread_count %}<span class="badge bg-danger">{{ unread_count }}</span>{% endif %}
+                </a>
                 <span class="text-white me-3">Hi, {{ user.first_name|default:user.username }}</span>
                 <form method="post" action="{% url 'logout' %}" class="m-0">
                     {% csrf_token %}
