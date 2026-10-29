@@ -36,15 +36,17 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-lg-3">
-        <div class="card text-center h-100">
-            <div class="card-body">
-                <div class="display-6 {% if stats.open_complaints %}text-danger{% endif %}">{{ stats.open_complaints }}</div>
-                <div class="text-muted">Open complaints</div>
-            </div>
+        <div class="col-6 col-lg-3">
+            <a href="{% url 'admin_complaints' %}" class="text-decoration-none text-reset">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <div class="display-6 {% if stats.open_complaints %}text-danger{% endif %}">{{ stats.open_complaints }}</div>
+                        <div class="text-muted">Open complaints</div>
+                    </div>
+                </div>
+            </a>
         </div>
     </div>
-</div>
 
 <h2 class="h5 mb-3">Recent activity</h2>
 <div class="row g-3">
@@ -87,7 +89,7 @@
             <ul class="list-group list-group-flush">
                 {% for c in recent_complaints %}
                 <li class="list-group-item">
-                    <div>{{ c.reason }}</div>
+                    <div><a href="{% url 'admin_complaint_detail' c.pk %}" class="text-decoration-none">{{ c.reason }}</a></div>
                     <div class="small text-muted">
                         By {{ c.reporter.first_name|default:c.reporter.username }}
                         &middot; {{ c.get_status_display }} &middot; {{ c.created_at|timesince }} ago

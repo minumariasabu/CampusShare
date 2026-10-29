@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Complaint #{{ complaint.pk }} - CampusShare{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Complaint #{{ complaint.pk }}</h1>
+{% include "adminpanel/_nav.html" with active="complaints" %}
+
+<a href="{% url 'admin_complaints' %}" class="text-decoration-none">&larr; Back to complaints</a>
+
+<div class="row g-4 mt-1">
+
+    <!-- Left: the complaint -->
+    <div class="col-lg-7">
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h2 class="h5 mb-1">{{ complaint.reason }}</h2>
+                    {% if is_open %}
+                        <span class="badge bg-danger">Open</span>
+                    {% else %}
+                        <span class="badge bg-success">Resolved</span>
+                    {% endif %}
+                </div>
+                <div class="text-muted small mb-3">Filed {{ complaint.created_at|date:"j M Y, g:i A" }}</div>
+
+                <div class="text-muted small">What happened</div>
+                <p>{{ complaint.description|linebreaksbr }}</p>
+
+                {% if complaint.admin_note %}
+                    <hr>
+                    <div class="text-muted small">Admin note (internal)</div>
+                    <div>{{ complaint.admin_note|linebreaksbr }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Reported by</div>
+                        <div class="fw-bold">
+                            <a href="{% url 'admin_user_detail' complaint.reporter.pk %}" class="text-decoration-none">
+                                {{ complaint.reporter.first_name|default:complaint.reporter.username }}
+                            </a>
+                        </div>
+                        <div class="small text-muted">{{ complaint.reporter.email|default:"-" }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Reported user</div>
+                        {% if target %}
+                            <div class="fw-bold">
+                                <a href="{% url 'admin_user_detail' target.pk %}" class="text-decoration-none">
+                                    {{ target.first_name|default:target.username }}
+                                </a>
+                                {% if target.is_staff %}<span class="badge bg-dark">Admin</span>
+                                {% elif not target.is_active %}<span class="badge bg-danger">Deactivated</span>{% endif %}
+                            </div>
+                            <div class="small text-muted">{{ target.email|default:"-" }}</div>
+                            <div class="small mt-1 {% if other_reports %}text-danger{% else %}text-muted{% endif %}">
+                                {{ other_reports }} other report{{ other_reports|pluralize }} against this user
+                            </div>
+                        {% else %}
+                            <div class="text-muted">This user no longer exists.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if complaint.resource %}
+        <div class="card mt-3">
+            <div class="card-body">
+                <div class="text-muted small">Reported listing</div>
+                <div class="fw-bold">
+                    <a href="{% url 'resource_detail' complaint.resource.pk %}" class="text-decoration-none">{{ complaint.resource.title }}</a>
+                    {% if complaint.resource.is_hidden %}<span class="badge bg-danger">Hidden</span>{% endif %}
+                </div>
+                <a href="{% url 'admin_listings' %}?q={{ complaint.resource.title|urlencode }}" class="small">Hide or remove it in Manage Listings</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right: actions -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h6">Take action</h2>
+
+                {% if is_open %}
+                <form method="post" action="{% url 'admin_complaint_action' complaint.pk %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="note" class="form-label">Admin note (optional, internal)</label>
+                        <textarea name="note" id="note" rows="3" maxlength="500" class="form-control"
+                                  placeholder="For example: Spoke to both students, item returned."></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" name="action" value="resolve" class="btn btn-success"
+                                onclick="return confirm('Mark this complaint as resolved?');">Resolve</button>
+
+                        <button type="submit" name="action" value="warn" class="btn btn-warning"
+                                {% if not can_warn %}disabled{% endif %}
+                                onclick="return confirm('Send a warning to this user and close the complaint?');">Warn user</button>
+
+                        <button type="submit" name="action" value="deactivate" class="btn btn-danger"
+                                {% if not can_deactivate %}disabled{% endif %}
+                                onclick="return confirm('Deactivate this user? They will not be able to log in.');">Deactivate user</button>
+                    </div>
+                </form>
+
+                {% if not can_warn %}
+                    <div class="form-text mt-2">
+                        Warn and Deactivate are unavailable because the reported user is missing, an admin, or you.
+                    </div>
+                {% elif not can_deactivate %}
+                    <div class="form-text mt-2">This user is already deactivated.</div>
+                {% endif %}
+                <div class="form-text mt-2">Every action closes the complaint.</div>
+
+                {% else %}
+                    <p class="text-muted mb-0">This complaint has been handled. No further action is needed.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

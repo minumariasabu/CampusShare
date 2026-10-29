@@ -5,6 +5,7 @@ from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.db import transaction
 
 from borrowing.models import Complaint, Notification, Request as BorrowRequest, Review
 from resources.models import Category, Resource
@@ -294,3 +295,122 @@ def delete_category(request, pk):
         category.delete()
         messages.success(request, "Category deleted.")
     return redirect('admin_categories')
+
+COMPLAINT_ACTIONS = {
+    'resolve': 'Resolved',
+    'warn': 'User warned',
+    'deactivate': 'User deactivated',
+}
+
+
+@staff_required
+def manage_complaints(request):
+    base = Complaint.objects.select_related('reporter', 'reported_user', 'resource')
+
+    tab = request.GET.get('status', 'open')
+    if tab not in ('open', 'resolved', 'all'):
+        tab = 'open'
+
+    qs = base if tab == 'all' else base.filter(status=tab)
+    qs = qs.order_by('-created_at')
+
+    paginator = Paginator(qs, 15)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'adminpanel/complaints.html', {
+        'page_obj': page_obj,
+        'tab': tab,
+        'open_count': base.filter(status='open').count(),
+        'resolved_count': base.filter(status='resolved').count(),
+        'all_count': base.count(),
+    })
+
+
+@staff_required
+def complaint_detail(request, pk):
+    complaint = get_object_or_404(
+        Complaint.objects.select_related(
+            'reporter', 'reported_user', 'resource', 'resource__owner'
+        ),
+        pk=pk,
+    )
+    target = complaint.reported_user
+
+    other_reports = 0
+    if target:
+        other_reports = (
+            Complaint.objects.filter(reported_user=target).exclude(pk=complaint.pk).count()
+        )
+
+    is_open = complaint.status == 'open'
+    can_act_on_user = (
+        is_open and target is not None
+        and target.pk != request.user.pk and not target.is_staff
+    )
+
+    return render(request, 'adminpanel/complaint_detail.html', {
+        'complaint': complaint,
+        'target': target,
+        'other_reports': other_reports,
+        'is_open': is_open,
+        'can_warn': can_act_on_user,
+        'can_deactivate': can_act_on_user and target.is_active,
+    })
+
+
+@staff_required
+@require_POST
+def complaint_action(request, pk):
+    action = request.POST.get('action', '')
+    note = request.POST.get('note', '').strip()[:500]
+
+    if action not in COMPLAINT_ACTIONS:
+        messages.error(request, "Unknown action.")
+        return redirect('admin_complaint_detail', pk=pk)
+
+    with transaction.atomic():
+        complaint = get_object_or_404(Complaint.objects.select_for_update(), pk=pk)
+
+        if complaint.status != 'open':
+            messages.error(request, "This complaint was already handled.")
+            return redirect('admin_complaint_detail', pk=complaint.pk)
+
+        target = complaint.reported_user
+
+        if action in ('warn', 'deactivate'):
+            if target is None:
+                messages.error(request, "The reported user no longer exists.")
+                return redirect('admin_complaint_detail', pk=complaint.pk)
+            blocked = _protected(request, target)
+            if blocked:
+                messages.error(request, blocked)
+                return redirect('admin_complaint_detail', pk=complaint.pk)
+            if action == 'deactivate' and not target.is_active:
+                messages.error(request, "This user is already deactivated.")
+                return redirect('admin_complaint_detail', pk=complaint.pk)
+
+        if action == 'warn':
+            Notification.objects.create(
+                user=target,
+                message=(
+                    f'An admin has issued you a warning after a report: "{complaint.reason}". '
+                    'Please follow the sharing rules. Repeated reports may lead to '
+                    'your account being deactivated.'
+                )[:255],
+            )
+        elif action == 'deactivate':
+            target.is_active = False
+            target.save(update_fields=['is_active'])
+
+        label = COMPLAINT_ACTIONS[action]
+        complaint.status = 'resolved'
+        complaint.admin_note = f'{label}. {note}' if note else label
+        complaint.save(update_fields=['status', 'admin_note'])
+
+        Notification.objects.create(
+            user=complaint.reporter,
+            message=f'Your report ("{complaint.reason}") was reviewed by an admin and closed.'[:255],
+        )
+
+    messages.success(request, f"Complaint closed: {label.lower()}.")
+    return redirect('admin_complaint_detail', pk=complaint.pk)
