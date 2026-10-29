@@ -134,7 +134,21 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'post_login'
 LOGOUT_REDIRECT_URL = 'home'
 # Prints emails in the terminal instead of sending them (for testing)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+import os
+
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+
+if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.gmail.com'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    DEFAULT_FROM_EMAIL = f'CampusShare <{EMAIL_HOST_USER}>'
+else:
+    # No email account configured: emails are printed in the terminal
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = 'CampusShare <noreply@campusshare.local>'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

@@ -26,7 +26,7 @@ def dashboard(request):
         borrower=user, status__in=['handed_over', 'return_initiated', 'overdue']
     ).count()
     due_soon = BorrowRequest.objects.filter(
-        borrower=user, status='handed_over',
+        borrower=user, status__in=['handed_over', 'overdue'],
         return_by__isnull=False, return_by__lte=today + timedelta(days=3),
     ).count()
     notifications = Notification.objects.filter(user=user)[:5]
