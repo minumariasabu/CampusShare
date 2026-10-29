@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - CampusShare{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Reports &amp; statistics</h1>
+{% include "adminpanel/_nav.html" with active="reports" %}
+
+<div class="row g-3 mb-4 text-center">
+    <div class="col-6 col-lg-3">
+        <div class="card"><div class="card-body py-3">
+            <div class="h3 mb-0">{{ totals.requests }}</div>
+            <div class="small text-muted">Total requests</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card"><div class="card-body py-3">
+            <div class="h3 mb-0">{{ totals.completed }}</div>
+            <div class="small text-muted">Completed</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card"><div class="card-body py-3">
+            <div class="h3 mb-0">{{ totals.reviews }}</div>
+            <div class="small text-muted">Reviews written</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card"><div class="card-body py-3">
+            <div class="h3 mb-0">
+                {% if totals.avg_rating %}&#9733; {{ totals.avg_rating|floatformat:1 }}{% else %}-{% endif %}
+            </div>
+            <div class="small text-muted">Average rating</div>
+        </div></div>
+    </div>
+</div>
+
+<div class="row g-4">
+
+    <!-- Most borrowed items -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">Most borrowed items</div>
+            <div class="card-body">
+                {% for row in items %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small">
+                        <span>{{ row.obj.title }} <span class="text-muted">by {{ row.obj.owner.first_name|default:row.obj.owner.username }}</span></span>
+                        <strong>{{ row.value }}</strong>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar" role="progressbar" data-pct="{{ row.pct }}"></div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">No items have been borrowed yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Most active users -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">Most active users</div>
+            <div class="card-body">
+                {% for row in users %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small">
+                        <a href="{% url 'admin_user_detail' row.obj.pk %}" class="text-decoration-none">
+                            {{ row.obj.first_name|default:row.obj.username }}
+                        </a>
+                        <span><strong>{{ row.value }}</strong> <span class="text-muted">actions</span></span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-success" role="progressbar" data-pct="{{ row.pct }}"></div>
+                    </div>
+                    <div class="small text-muted">
+                        {{ row.obj.listed }} listed &middot; {{ row.obj.made }} requested &middot; {{ row.obj.received }} received
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">No activity yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Requests per month -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">Requests per month (last 6 months)</div>
+            <div class="card-body">
+                {% for row in monthly %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small">
+                        <span>{{ row.label }}</span>
+                        <strong>{{ row.value }}</strong>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-info" role="progressbar" data-pct="{{ row.pct }}"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Category usage -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">Category-wise usage</div>
+            <div class="card-body">
+                {% for row in categories %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small">
+                        <span>{{ row.obj.name }} <span class="text-muted">({{ row.obj.listings }} listing{{ row.obj.listings|pluralize }})</span></span>
+                        <strong>{{ row.value }} request{{ row.value|pluralize }}</strong>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-warning" role="progressbar" data-pct="{{ row.pct }}"></div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">No categories yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<p class="text-muted small mt-3">
+    "Borrowed" counts requests where the item was handed over. Activity counts listings, requests made and requests received.
+</p>
+{% endblock %}
+{% block scripts %}
+<script>
+    document.querySelectorAll('[data-pct]').forEach(function (bar) {
+        bar.style.width = bar.dataset.pct + '%';
+    });
+</script>
+{% endblock %}

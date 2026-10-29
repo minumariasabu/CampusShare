@@ -6,7 +6,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.db import transaction
+from datetime import date
 
+from django.db.models.functions import TruncMonth
+from django.utils import timezone
 from borrowing.models import Complaint, Notification, Request as BorrowRequest, Review
 from resources.models import Category, Resource
 
@@ -414,3 +417,106 @@ def complaint_action(request, pk):
 
     messages.success(request, f"Complaint closed: {label.lower()}.")
     return redirect('admin_complaint_detail', pk=complaint.pk)
+
+# A request counts as "borrowed" once the item has actually changed hands
+LENT_STATUSES = ['handed_over', 'return_initiated', 'overdue', 'completed']
+
+
+def _percent(value, top):
+    return round(value * 100 / top) if top else 0
+
+
+@staff_required
+def reports(request):
+    # 1. Most borrowed items
+    top_items = list(
+        Resource.objects.select_related('owner')
+        .annotate(times=Count('requests', filter=Q(requests__status__in=LENT_STATUSES), distinct=True))
+        .filter(times__gt=0)
+        .order_by('-times', 'title')[:5]
+    )
+    item_top = top_items[0].times if top_items else 0
+    items = [
+        {'obj': r, 'value': r.times, 'pct': _percent(r.times, item_top)}
+        for r in top_items
+    ]
+
+    # 2. Most active users (listings + requests made + requests received)
+    people = (
+        User.objects.filter(is_staff=False, is_active=True)
+        .annotate(
+            listed=Count('resources', distinct=True),
+            made=Count('requests_made', distinct=True),
+            received=Count('resources__requests', distinct=True),
+        )
+    )
+    ranked = sorted(
+        ((u, u.listed + u.made + u.received) for u in people),
+        key=lambda pair: -pair[1],
+    )
+    ranked = [pair for pair in ranked if pair[1] > 0][:5]
+    user_top = ranked[0][1] if ranked else 0
+    users = [
+        {'obj': u, 'value': total, 'pct': _percent(total, user_top)}
+        for u, total in ranked
+    ]
+
+    # 3. Requests per month (last 6 months, including months with zero)
+    today = timezone.localdate()
+    months = []
+    year, month = today.year, today.month
+    for _ in range(6):
+        months.append((year, month))
+        month -= 1
+        if month == 0:
+            month, year = 12, year - 1
+    months.reverse()
+
+    start = date(months[0][0], months[0][1], 1)
+    counts = {}
+    monthly_rows = (
+        BorrowRequest.objects.filter(created_at__date__gte=start)
+        .annotate(m=TruncMonth('created_at'))
+        .values('m')
+        .annotate(n=Count('id'))
+    )
+    for row in monthly_rows:
+        counts[(row['m'].year, row['m'].month)] = row['n']
+
+    month_top = max((counts.get(key, 0) for key in months), default=0)
+    monthly = [
+        {
+            'label': date(y, m, 1).strftime('%b %Y'),
+            'value': counts.get((y, m), 0),
+            'pct': _percent(counts.get((y, m), 0), month_top),
+        }
+        for y, m in months
+    ]
+
+    # 4. Category-wise usage (requests made on items in each category)
+    cats = list(
+        Category.objects.annotate(
+            listings=Count('resources', distinct=True),
+            reqs=Count('resources__requests', distinct=True),
+        ).order_by('-reqs', 'name')
+    )
+    cat_top = cats[0].reqs if cats else 0
+    categories = [
+        {'obj': c, 'value': c.reqs, 'pct': _percent(c.reqs, cat_top)}
+        for c in cats
+    ]
+
+    totals = {
+        'requests': BorrowRequest.objects.count(),
+        'completed': BorrowRequest.objects.filter(status='completed').count(),
+        'reviews': Review.objects.count(),
+        'avg_rating': Review.objects.aggregate(a=Avg('rating'))['a'],
+    }
+
+    return render(request, 'adminpanel/reports.html', {
+        'items': items,
+        'users': users,
+        'monthly': monthly,
+        'categories': categories,
+        'totals': totals,
+    })
