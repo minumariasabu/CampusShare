@@ -92,6 +92,13 @@ class EmailLoginForm(AuthenticationForm):
         if '@' in value:
             value = value.lower()
         return value
+    def confirm_login_allowed(self, user):
+        super().confirm_login_allowed(user)
+        if not user.is_verified and not user.is_staff:
+            raise forms.ValidationError(
+                "Please verify your email before logging in. Check your inbox for the link.",
+                code='unverified',
+            )
 
 class ProfileForm(forms.ModelForm):
     year = forms.ChoiceField(choices=RegisterForm.YEAR_CHOICES)

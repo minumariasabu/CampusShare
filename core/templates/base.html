@@ -10,30 +10,73 @@
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="/">CampusShare</a>
-        <div class="ms-auto d-flex align-items-center">
+        <a class="navbar-brand fw-bold" href="{% url 'home' %}">CampusShare</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="mainNav">
             {% if user.is_authenticated %}
-                <a class="text-white me-3 text-decoration-none" href="{% url 'dashboard' %}">Dashboard</a>
-                <a class="text-white me-3 text-decoration-none" href="{% url 'add_resource' %}">Add Resource</a>
-                <a class="text-white me-3 text-decoration-none" href="{% url 'my_listings' %}">My Listings</a>
-                <a class="text-white me-3 text-decoration-none" href="{% url 'browse' %}">Browse</a>
-                <a class="text-white me-3 text-decoration-none" href="{% url 'my_requests' %}">My Requests</a>
-                <a class="text-white me-3 text-decoration-none" href="{% url 'incoming_requests' %}">Incoming</a>
-                <a class="text-white me-3 text-decoration-none" href="{% url 'notifications' %}">
-                    Notifications
-                    {% if unread_count %}<span class="badge bg-danger">{{ unread_count }}</span>{% endif %}
-                </a>
-                <a class="text-white me-3 text-decoration-none" href="{% url 'my_profile' %}">Hi, {{ user.first_name|default:user.username }}</a>
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'browse' %}">Browse</a></li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Lend</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'add_resource' %}">Add resource</a></li>
+                        <li><a class="dropdown-item" href="{% url 'my_listings' %}">My listings</a></li>
+                        <li><a class="dropdown-item" href="{% url 'incoming_requests' %}">Incoming requests</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Borrow</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'my_requests' %}">My requests</a></li>
+                        <li><a class="dropdown-item" href="{% url 'borrowing_history' %}">Borrowing history</a></li>
+                    </ul>
+                </li>
+            </ul>
+
+            <ul class="navbar-nav align-items-lg-center">
                 {% if user.is_staff %}
-                    <a class="text-warning me-3 text-decoration-none fw-bold" href="{% url 'admin_dashboard' %}">Admin</a>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="{% url 'admin_dashboard' %}">Admin</a>
+                </li>
                 {% endif %}
-                <form method="post" action="{% url 'logout' %}" class="m-0">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-light btn-sm">Logout</button>
-                </form>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'notifications' %}">
+                        Notifications
+                        {% if unread_count %}<span class="badge bg-danger">{{ unread_count }}</span>{% endif %}
+                    </a>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        {{ user.first_name|default:user.username }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{% url 'my_profile' %}">My profile</a></li>
+                        <li><a class="dropdown-item" href="{% url 'password_change' %}">Change password</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="post" action="{% url 'logout' %}" class="m-0">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-item">Log out</button>
+                            </form>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+
             {% else %}
-                <a class="btn btn-outline-light btn-sm me-2" href="{% url 'login' %}">Login</a>
+            <div class="ms-auto d-flex gap-2 mt-2 mt-lg-0">
+                <a class="btn btn-outline-light btn-sm" href="{% url 'login' %}">Login</a>
                 <a class="btn btn-light btn-sm" href="{% url 'register' %}">Register</a>
+            </div>
             {% endif %}
         </div>
     </div>

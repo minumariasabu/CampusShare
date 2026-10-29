@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Resend verification - CampusShare{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <h1 class="h3 mb-3 text-center">Resend verification</h1>
+        <p class="text-muted text-center">Enter your college email and we'll send a new link.</p>
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="id_email" class="form-label">College email</label>
+                <input type="email" name="email" id="id_email" class="form-control"
+                       value="{{ email }}" required autofocus>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Send link</button>
+        </form>
+        <p class="text-center small text-muted mt-3">You can request one link per minute.</p>
+        <p class="text-center"><a href="{% url 'login' %}">Back to login</a></p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Check your email - CampusShare{% endblock %}
+{% block content %}
+<div class="text-center py-5">
+    <h1 class="h3">Check your email</h1>
+    <p class="text-muted">
+        {% if email %}We sent a verification link to <strong>{{ email }}</strong>.{% else %}We sent you a verification link.{% endif %}
+        Open it to activate your account. The link works for 3 days.
+    </p>
+    <p class="small text-muted">Can't see it? Check your spam folder.</p>
+    <a href="{% url 'verify_resend' %}" class="btn btn-outline-primary">Resend the email</a>
+    <a href="{% url 'login' %}" class="btn btn-primary ms-2">Go to login</a>
+</div>
+{% endblock %}
