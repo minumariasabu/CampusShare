@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Categories - CampusShare{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Manage categories</h1>
+{% include "adminpanel/_nav.html" with active="categories" %}
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h6">Add a category</h2>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary w-100">Add category</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Listings</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in categories %}
+                    <tr>
+                        <td class="fw-bold">{{ c.name }}</td>
+                        <td class="small text-muted">{{ c.description|default:"-" }}</td>
+                        <td>{{ c.item_count }}</td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-1">
+                                <a href="{% url 'admin_category_edit' c.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                <form method="post" action="{% url 'admin_category_delete' c.pk %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            onclick="return confirm('Delete this category?');">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted py-4">No categories yet. Add one on the left.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="form-text">A category that still has listings can't be deleted.</div>
+    </div>
+</div>
+{% endblock %}

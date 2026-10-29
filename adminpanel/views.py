@@ -4,11 +4,13 @@ from django.core.paginator import Paginator
 from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
+from django.utils.http import url_has_allowed_host_and_scheme
 
-from borrowing.models import Complaint, Request as BorrowRequest, Review
-from resources.models import Resource
+from borrowing.models import Complaint, Notification, Request as BorrowRequest, Review
+from resources.models import Category, Resource
 
 from .decorators import staff_required
+from .forms import CategoryForm
 
 User = get_user_model()
 
@@ -127,7 +129,10 @@ def toggle_user(request, pk):
             messages.success(request, f"{name} has been activated.")
         else:
             messages.success(request, f"{name} has been deactivated and can no longer log in.")
-    return redirect(request.POST.get('next') or 'admin_users')
+        nxt = request.POST.get('next', '')
+    if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
+        return redirect(nxt)
+    return redirect('admin_users')
 
 
 @staff_required
@@ -159,3 +164,133 @@ def delete_user(request, pk):
     target.delete()
     messages.success(request, f"{name} has been deleted.")
     return redirect('admin_users')
+
+@staff_required
+def manage_listings(request):
+    qs = (
+        Resource.objects.select_related('owner', 'category')
+        .prefetch_related('images')
+        .annotate(
+            open_complaints=Count('complaints', filter=Q(complaints__status='open'), distinct=True),
+            request_count=Count('requests', distinct=True),
+        )
+        .order_by('-open_complaints', '-created_at')      # flagged listings first
+    )
+
+    q = request.GET.get('q', '').strip()
+    flt = request.GET.get('filter', '')
+
+    if q:
+        qs = qs.filter(
+            Q(title__icontains=q) | Q(owner__first_name__icontains=q)
+            | Q(owner__email__icontains=q) | Q(category__name__icontains=q)
+        )
+    if flt == 'flagged':
+        qs = qs.filter(open_complaints__gt=0)
+    elif flt == 'hidden':
+        qs = qs.filter(is_hidden=True)
+    else:
+        flt = ''
+
+    paginator = Paginator(qs, 15)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    params = request.GET.copy()
+    params.pop('page', None)
+
+    return render(request, 'adminpanel/listings.html', {
+        'page_obj': page_obj,
+        'total': paginator.count,
+        'q': q,
+        'filter': flt,
+        'querystring': params.urlencode(),
+    })
+
+
+@staff_required
+@require_POST
+def toggle_listing(request, pk):
+    resource = get_object_or_404(Resource.objects.select_related('owner'), pk=pk)
+    resource.is_hidden = not resource.is_hidden
+    resource.save(update_fields=['is_hidden'])
+
+    if resource.is_hidden:
+        text = f'Your listing "{resource.title}" was hidden by an admin. It is not visible to other students.'
+        messages.success(request, "Listing hidden. The owner has been notified.")
+    else:
+        text = f'Your listing "{resource.title}" is visible to other students again.'
+        messages.success(request, "Listing is visible again. The owner has been notified.")
+    Notification.objects.create(user=resource.owner, message=text[:255])
+    return redirect('admin_listings')
+
+
+@staff_required
+@require_POST
+def delete_listing(request, pk):
+    resource = get_object_or_404(Resource.objects.select_related('owner'), pk=pk)
+
+    if resource.requests.exists():
+        messages.error(
+            request,
+            "This listing has requests, so it can't be removed without erasing "
+            "other students' history. Hide it instead.",
+        )
+    else:
+        Notification.objects.create(
+            user=resource.owner,
+            message=f'Your listing "{resource.title}" was removed by an admin.'[:255],
+        )
+        resource.delete()
+        messages.success(request, "Listing removed. The owner has been notified.")
+    return redirect('admin_listings')
+
+
+@staff_required
+def manage_categories(request):
+    if request.method == 'POST':
+        form = CategoryForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Category added.")
+            return redirect('admin_categories')
+    else:
+        form = CategoryForm()
+
+    categories = Category.objects.annotate(item_count=Count('resources')).order_by('name')
+    return render(request, 'adminpanel/categories.html', {
+        'form': form,
+        'categories': categories,
+    })
+
+
+@staff_required
+def edit_category(request, pk):
+    category = get_object_or_404(Category, pk=pk)
+    if request.method == 'POST':
+        form = CategoryForm(request.POST, instance=category)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Category updated.")
+            return redirect('admin_categories')
+    else:
+        form = CategoryForm(instance=category)
+    return render(request, 'adminpanel/category_edit.html', {
+        'form': form,
+        'category': category,
+    })
+
+
+@staff_required
+@require_POST
+def delete_category(request, pk):
+    category = get_object_or_404(Category, pk=pk)
+    if category.resources.exists():
+        messages.error(
+            request,
+            "This category still has listings, so it can't be deleted. "
+            "Rename it instead, or wait until its listings are gone.",
+        )
+    else:
+        category.delete()
+        messages.success(request, "Category deleted.")
+    return redirect('admin_categories')

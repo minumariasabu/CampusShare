@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Listings - CampusShare{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Manage listings</h1>
+{% include "adminpanel/_nav.html" with active="listings" %}
+
+<form method="get" class="card card-body mb-3">
+    <div class="row g-2">
+        <div class="col-12 col-md-6">
+            <input type="text" name="q" value="{{ q }}" class="form-control"
+                   placeholder="Search by title, owner or category">
+        </div>
+        <div class="col-6 col-md-3">
+            <select name="filter" class="form-select">
+                <option value="">All listings</option>
+                <option value="flagged" {% if filter == 'flagged' %}selected{% endif %}>Flagged (open complaints)</option>
+                <option value="hidden" {% if filter == 'hidden' %}selected{% endif %}>Hidden</option>
+            </select>
+        </div>
+        <div class="col-6 col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Search</button>
+            <a href="{% url 'admin_listings' %}" class="btn btn-outline-secondary">Clear</a>
+        </div>
+    </div>
+</form>
+
+<p class="text-muted">{{ total }} listing{{ total|pluralize }} found. Flagged listings are shown first.</p>
+
+<div class="table-responsive">
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Listing</th>
+                <th>Owner</th>
+                <th>Status</th>
+                <th>Requests</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in page_obj %}
+            <tr {% if r.open_complaints %}class="table-warning"{% endif %}>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        {% with img=r.images.all.0 %}
+                            {% if img %}
+                                <img src="{{ img.image.url }}" alt="{{ r.title }}" class="rounded"
+                                     style="width: 48px; height: 48px; object-fit: cover;">
+                            {% else %}
+                                <div class="bg-light rounded text-muted small d-flex align-items-center justify-content-center"
+                                     style="width: 48px; height: 48px;">&mdash;</div>
+                            {% endif %}
+                        {% endwith %}
+                        <div>
+                            <a href="{% url 'resource_detail' r.pk %}" class="text-decoration-none">{{ r.title }}</a>
+                            <div class="small text-muted">
+                                {{ r.category.name|default:"No category" }} &middot; {{ r.get_listing_type_display }}
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td class="small">
+                    <a href="{% url 'admin_user_detail' r.owner.pk %}" class="text-decoration-none">{{ r.owner.first_name|default:r.owner.username }}</a>
+                </td>
+                <td>
+                    {% if r.status == 'available' %}
+                        <span class="badge bg-success">Available</span>
+                    {% elif r.status == 'lent_out' %}
+                        <span class="badge bg-warning text-dark">Lent out</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Unavailable</span>
+                    {% endif %}
+                    {% if r.is_hidden %}<span class="badge bg-danger">Hidden</span>{% endif %}
+                    {% if r.open_complaints %}
+                        <span class="badge bg-warning text-dark">{{ r.open_complaints }} open complaint{{ r.open_complaints|pluralize }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ r.request_count }}</td>
+                <td class="text-end">
+                    <div class="d-flex justify-content-end gap-1">
+                        <a href="{% url 'resource_detail' r.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+                        <form method="post" action="{% url 'admin_listing_toggle' r.pk %}">
+                            {% csrf_token %}
+                            {% if r.is_hidden %}
+                                <button type="submit" class="btn btn-sm btn-outline-success">Unhide</button>
+                            {% else %}
+                                <button type="submit" class="btn btn-sm btn-outline-warning"
+                                        onclick="return confirm('Hide this listing from other students?');">Hide</button>
+                            {% endif %}
+                        </form>
+                        <form method="post" action="{% url 'admin_listing_delete' r.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirm('Permanently remove this listing? This cannot be undone.');">Remove</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-4">No listings match your search.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="form-text">Remove works only for listings with no requests. Hide the others instead.</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-3">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+        {% endif %}
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}
