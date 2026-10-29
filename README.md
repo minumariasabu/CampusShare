@@ -94,4 +94,4 @@ The project follows a written flow and page design (27 pages) and a 9-table data
 
 ## Author
 
-Minu, ABC College of Engineering
+Minu, SMEC Technologies
